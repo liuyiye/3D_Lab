@@ -1,4 +1,4 @@
-# 3D
+# 3D_Lab
 
 #C:\Users\XXX\AppData\Local\NA-MIC\Slicer 5.0.3\lib\Python\Lib
 #list(filter(lambda x:'dir' in x,dir(os)))
