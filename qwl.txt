@@ -1,0 +1,60 @@
+2023.07.07
+======按序列名称筛选======
+
+import os
+import shutil
+import pydicom
+
+dicom_folder = r'C:\0'
+specific_character = 'cine_tf2d12_retro_iPAT-AX'
+new_folder = r'C:\1'
+
+file_list = []
+for root, dirs, files in os.walk(dicom_folder):
+    for file in files:
+        file_list.append(os.path.join(root, file))
+
+for file in file_list:
+    #if file.endswith('.IMA'):
+        ds = pydicom.dcmread(file)
+        if specific_character in ds.SeriesDescription:
+            shutil.copy(file, new_folder)
+
+
+======序列组合======
+
+import os
+import pydicom
+
+dicom_folder = r'C:\1'
+new_folder = r'C:\2'
+
+files=os.listdir(dicom_folder)
+siuid=pydicom.uid.generate_uid()
+
+for filename in files:
+    ds=pydicom.dcmread(os.path.join(dicom_folder, filename))
+    ds.SeriesInstanceUID=siuid
+    ds.SeriesNumber=100
+    ds.save_as(os.path.join(new_folder, filename))
+
+
+======序列重组======
+
+import os
+import pydicom
+
+dicom_folder = r'C:\1'
+new_folder = r'C:\2'
+
+files=os.listdir(dicom_folder)
+number_list=[pydicom.dcmread(os.path.join(dicom_folder, filename)).InstanceNumber for filename in files]
+group=max(number_list)
+uid_list = [pydicom.uid.generate_uid() for _ in range(group)]
+
+for filename,n in zip(files,range(len(files))):
+    ds = pydicom.dcmread(os.path.join(dicom_folder, filename))
+    ds.SeriesInstanceUID=uid_list[n%group]
+    ds.SeriesNumber=n%group
+    ds.save_as(os.path.join(new_folder, filename))
+
