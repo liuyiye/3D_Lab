@@ -88,3 +88,63 @@ for filename,n in zip(files,range(len(files))):
     ds.SeriesNumber=n%group
     ds.save_as(os.path.join(new_folder, filename))
 
+
+======精简======
+
+import os
+import pydicom
+
+dicom_folder = r'C:\2'
+new_folder = r'C:\3'
+
+for root, dirs, files in os.walk(dicom_folder):
+    for file in files:
+    #if file.endswith('.IMA'):
+       ds0 = pydicom.dcmread(os.path.join(root, file),force=True)
+       ds = pydicom.Dataset()
+       ds.is_little_endian = True
+       ds.is_implicit_VR = True
+       #ds.file_meta = ds0.file_meta(3d slicer error)
+       ds.PatientName = ds0.PatientName
+       ds.PatientID = ds0.PatientID
+       for elem in ds0:
+           if elem.tag.group  in [0x0008,0x0020,0x0028]:
+               ds.add(elem)
+       ds.PixelData = ds0.PixelData
+       ds.save_as(os.path.join(new_folder, file))
+
+
+==============
+
+import os
+import pydicom
+
+dicom_folder = r'C:\0'
+new_folder = r'C:\1'
+
+for root, dirs, files in os.walk(dicom_folder):
+    for file in files:
+       ds = pydicom.dcmread(os.path.join(root, file),force=True)
+       for elem in ds:
+           if elem.tag.group in [0x0010,0x0018,0x0040]:
+               del ds[elem.tag]
+       ds.save_as(os.path.join(new_folder, file))
+
+
+==============
+
+import os
+import pydicom
+
+dicom_folder = r'C:\0'
+new_folder = r'C:\1'
+
+for root, dirs, files in os.walk(dicom_folder):
+    for file in files:
+       ds = pydicom.dcmread(os.path.join(root, file),force=True)
+       for tag in list(ds.keys()):
+           if tag.group in [0x0010,0x0018,0x0040]:
+               del ds[tag]
+       ds.save_as(os.path.join(new_folder, file))
+
+
