@@ -114,6 +114,23 @@ for root, dirs, files in os.walk(dicom_folder):
        ds.save_as(os.path.join(new_folder, file),write_like_original=False)
 
 
+======精简======
+
+import os
+import pydicom
+
+dicom_folder = r'C:\2'
+new_folder = r'C:\3'
+
+for root, dirs, files in os.walk(dicom_folder):
+    for file in files:
+       ds = pydicom.dcmread(os.path.join(root, file))
+       for elem in ds:
+           if elem.tag.group not in [0x0008,0x0020,0x0028] and elem.tag not in [0x00100010,0x00100020,0x7FE00010]:
+               del ds[elem.tag]
+       ds.save_as(os.path.join(new_folder, file))
+
+
 ==============
 
 import os

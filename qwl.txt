@@ -69,14 +69,9 @@ new_folder = r'C:\3'
 
 for root, dirs, files in os.walk(dicom_folder):
     for file in files:
-       ds0 = pydicom.dcmread(os.path.join(root, file),force=True)
-       ds = pydicom.Dataset()
-       ds.file_meta=ds0.file_meta
-       ds.PatientName = ds0.PatientName
-       ds.PatientID = ds0.PatientID
-       for elem in ds0:
-           if elem.tag.group  in [0x0008,0x0020,0x0028]:
-               ds.add(elem)
-       ds.PixelData = ds0.PixelData
-       ds.save_as(os.path.join(new_folder, file),write_like_original=False)
+       ds = pydicom.dcmread(os.path.join(root, file))
+       for elem in ds:
+           if elem.tag.group not in [0x0008,0x0020,0x0028] and elem.tag not in [0x00100010,0x00100020,0x7FE00010]:
+               del ds[elem.tag]
+       ds.save_as(os.path.join(new_folder, file))
 
