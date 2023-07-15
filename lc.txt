@@ -25,9 +25,40 @@ def copy_files(src_path, dst_path, keyword):
                 dst_file = os.path.join(dst_path, file)
                 shutil.copy(src_file, dst_file)
 
-copy_files('src_path', 'dst_path', 'keyword')
-
 copy_files(r'd:\3d', r'c:\1', 'Ear')
+
+======按序列名称筛选FULL======
+
+import os
+import shutil
+import pydicom
+
+dicom_folder = r'C:\0'
+keyword = 'cine_tf2d12_retro_iPAT-SAX'
+dst_folder = r'C:\1'
+
+if not os.path.exists(dst_folder):
+    os.makedirs(dst_folder)
+
+for root, dirs, files in os.walk(dicom_folder):
+    for file in files:
+        src_file = os.path.join(root, file)
+        try:
+            ds = pydicom.dcmread(src_file)
+            is_dicom = True
+        except:
+            is_dicom = False
+#
+        if is_dicom and ds.SeriesDescription == keyword:
+            relative_path = os.path.relpath(src_file, dicom_folder)
+            dst_path = os.path.join(dst_folder, relative_path)
+            dst_dir = os.path.dirname(dst_path)
+            if not os.path.exists(dst_dir):
+                os.makedirs(dst_dir)
+#
+            dst_file = dst_path.rsplit('.', 1)[0] + '.dcm'
+            shutil.copy2(src_file, dst_file)
+
 
 ======按序列名称筛选======
 
@@ -36,7 +67,7 @@ import shutil
 import pydicom
 
 dicom_folder = r'C:\0'
-specific_character = 'cine_tf2d12_retro_iPAT-AX'
+specific_character = 'cine_tf2d12_retro_iPAT-SAX'
 new_folder = r'C:\1'
 
 file_list = []
@@ -89,8 +120,7 @@ for filename,n in zip(files,range(len(files))):
     ds.save_as(os.path.join(new_folder, filename))
 
 
-======精简======
-
+======精简add======
 
 import os
 import pydicom
