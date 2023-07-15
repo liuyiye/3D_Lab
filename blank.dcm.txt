@@ -1,0 +1,43 @@
+import os
+import pydicom
+import numpy as np
+
+ds = pydicom.Dataset()
+
+# Patient information
+ds.PatientName = "3D_Lab^Test"
+ds.PatientID = "123456"
+
+# Study information  
+ds.StudyDate = "20230216"
+ds.StudyTime = "121600"
+ds.AccessionNumber = "1"
+ds.StudyID = "1" 
+
+# Series information
+ds.ModalitiesInStudy = "CT"
+ds.SeriesInstanceUID = pydicom.uid.generate_uid()
+ds.SeriesNumber = 1
+
+# Image information
+ds.SOPInstanceUID = pydicom.uid.generate_uid()
+ds.SOPClassUID = pydicom.uid.CTImageStorage
+rows = 512
+cols = 512
+ds.Rows = rows
+ds.Columns = cols
+
+# Pixel data
+ds.BitsAllocated = 16
+ds.BitsStored = 12
+ds.HighBit = 11
+ds.PixelRepresentation = 0
+pixel_array = np.random.randint(0, 255, size=(rows, cols))  
+#ds.PixelData = bytes(ds.Rows*ds.Columns*2)
+ds.PixelData = pixel_array.tobytes()
+
+# Transfer syntax
+ds.file_meta = pydicom.Dataset()
+ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+
+ds.save_as(os.path.join(os.environ['HOMEPATH'],'blank.dcm'),write_like_original=False)
