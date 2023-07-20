@@ -204,23 +204,23 @@ ds1 = pydicom.dcmread(r'C:\0\image1.dcm')
 ds2 = pydicom.dcmread(r'C:\0\image2.dcm')
 output = r'C:\0\diff.csv'
 
-tags1 = [tag.tag for tag in ds1 if tag.tag != (0x7fe0, 0x0010)]
-tags2 = [tag.tag for tag in ds2 if tag.tag != (0x7fe0, 0x0010)]
+tags1 = [elem.tag for elem in ds1 if elem.tag != (0x7fe0, 0x0010)]
+tags2 = [elem.tag for elem in ds2 if elem.tag != (0x7fe0, 0x0010)]
 all_tags = tags1 + tags2
 diff = {}
 for tag in all_tags:
     if tag not in tags1:
-      diff[tag] = ['', ds2[tag].value] 
+      diff[tag] = [ds2[tag].keyword,'', ds2[tag].value] 
     elif tag not in tags2:
-      diff[tag] = [ds1[tag].value, '']
+      diff[tag] = [ds1[tag].keyword,ds1[tag].value, '']
     elif ds1[tag].value != ds2[tag].value:
-        diff[tag] = [ds1[tag].value, ds2[tag].value]
+        diff[tag] = [ds1[tag].keyword,ds1[tag].value, ds2[tag].value]
 
 with open(output,'w') as f:
   writer = csv.writer(f)
-  writer.writerow(['Tag', 'Value1', 'Value2'])
+  writer.writerow(['Tag', 'keyword','Value1', 'Value2'])
   for tag, values in diff.items():
-    writer.writerow([tag, values[0], values[1]])
+    writer.writerow([tag, values[0], values[1], values[2]])
 
 print('Diff comparison saved.')
 
