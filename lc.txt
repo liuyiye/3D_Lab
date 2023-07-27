@@ -228,3 +228,78 @@ with open(output,'w') as f:
 
 print('Diff comparison saved.')
 
+
+=======fusion=======
+
+import os
+import pydicom
+
+dicom_folder = r'C:\0'
+dst_folder = r'C:\1'
+
+stduid=pydicom.uid.generate_uid()
+foruid=pydicom.uid.generate_uid()
+
+if not os.path.exists(dst_folder):
+    os.makedirs(dst_folder)
+
+for root, dirs, files in os.walk(dicom_folder):
+    for file in files:
+        src_file = os.path.join(root, file)
+        try:
+            ds = pydicom.dcmread(src_file)
+            is_dicom = True
+        except:
+            is_dicom = False
+#
+        if is_dicom:
+            ds.SOPInstanceUID=pydicom.uid.generate_uid()
+            ds.StudyInstanceUID=stduid
+            ds.FrameOfReferenceUID=foruid
+            relative_path = os.path.relpath(src_file, dicom_folder)
+            dst_path = os.path.join(dst_folder, relative_path)
+            dst_dir = os.path.dirname(dst_path)
+            if not os.path.exists(dst_dir):
+                os.makedirs(dst_dir)
+#
+            dst_file = dst_path.rsplit('.', 1)[0] + '.dcm'
+            ds.save_as(dst_file)
+
+
+=======resample=======
+
+import os
+import pydicom 
+import numpy as np
+from skimage import transform
+
+dcm_dir=r'c:\0'
+output_folder=r'c:\1'
+output_shape=(512,512,200)
+
+files=os.listdir(dcm_dir)
+files.sort(key=lambda x: pydicom.dcmread(os.path.join(dcm_dir, x)).ImagePositionPatient[2])
+
+dicoms = [pydicom.dcmread(os.path.join(dcm_dir, file)) for file in files] 
+new_dicom = dicoms[0].copy()
+voxel_data = [d.pixel_array for d in dicoms]
+volume = np.stack(voxel_data, axis=-1)
+
+resampled = transform.resize(volume, output_shape, preserve_range=True, anti_aliasing=None, order=1)
+
+for i in range(resampled.shape[-1]):
+    new_dicom.Rows=output_shape[0]
+    new_dicom.Columns=output_shape[1]
+    new_dicom.PixelData = resampled[:, :, i].astype(np.uint16).tobytes()
+    new_spacing = (volume.shape[-1]-1)/(resampled.shape[-1]-1)
+    new_dicom.SliceThickness = dicoms[0].SliceThickness*new_spacing
+    new_dicom.SpacingBetweenSlices = dicoms[0].SpacingBetweenSlices*new_spacing
+    new_dicom.InstanceNumber = i+1
+    position_interval = (dicoms[-1].ImagePositionPatient[2]-dicoms[0].ImagePositionPatient[2])/(resampled.shape[-1]-1)
+    slice_interval = (dicoms[-1].SliceLocation-dicoms[0].SliceLocation)/(resampled.shape[-1]-1)
+    new_dicom.ImagePositionPatient[2] = dicoms[0].ImagePositionPatient[2]+i*position_interval
+    new_dicom.SliceLocation = dicoms[0].SliceLocation+i*slice_interval
+    new_dicom.SOPInstanceUID=pydicom.uid.generate_uid()
+    new_dicom_file = f"resampled_{i}.dcm"
+    new_dicom.save_as(os.path.join(output_folder, new_dicom_file))
+
