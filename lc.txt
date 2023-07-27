@@ -280,26 +280,26 @@ output_shape=(512,512,200)
 files=os.listdir(dcm_dir)
 files.sort(key=lambda x: pydicom.dcmread(os.path.join(dcm_dir, x)).ImagePositionPatient[2])
 
-dicoms = [pydicom.dcmread(os.path.join(dcm_dir, file)) for file in files] 
-new_dicom = dicoms[0].copy()
-voxel_data = [d.pixel_array for d in dicoms]
-volume = np.stack(voxel_data, axis=-1)
+ds_all = [pydicom.dcmread(os.path.join(dcm_dir, file)) for file in files] 
+p = [d.pixel_array for d in ds_all]
+v = np.stack(p, axis=-1)
 
-resampled = transform.resize(volume, output_shape, preserve_range=True, anti_aliasing=None, order=1)
+resampled = transform.resize(v, output_shape, preserve_range=True, anti_aliasing=None, order=1)
+scale=v.shape[2]/output_shape[2]
+position_interval = (ds_all[2].ImagePositionPatient[2]-ds_all[1].ImagePositionPatient[2])*scale
+slice_interval = (ds_all[2].SliceLocation-ds_all[1].SliceLocation)*scale
 
-for i in range(resampled.shape[-1]):
-    new_dicom.Rows=output_shape[0]
-    new_dicom.Columns=output_shape[1]
-    new_dicom.PixelData = resampled[:, :, i].astype(np.uint16).tobytes()
-    new_spacing = (volume.shape[-1]-1)/(resampled.shape[-1]-1)
-    new_dicom.SliceThickness = dicoms[0].SliceThickness*new_spacing
-    new_dicom.SpacingBetweenSlices = dicoms[0].SpacingBetweenSlices*new_spacing
-    new_dicom.InstanceNumber = i+1
-    position_interval = (dicoms[-1].ImagePositionPatient[2]-dicoms[0].ImagePositionPatient[2])/(resampled.shape[-1]-1)
-    slice_interval = (dicoms[-1].SliceLocation-dicoms[0].SliceLocation)/(resampled.shape[-1]-1)
-    new_dicom.ImagePositionPatient[2] = dicoms[0].ImagePositionPatient[2]+i*position_interval
-    new_dicom.SliceLocation = dicoms[0].SliceLocation+i*slice_interval
-    new_dicom.SOPInstanceUID=pydicom.uid.generate_uid()
-    new_dicom_file = f"resampled_{i}.dcm"
-    new_dicom.save_as(os.path.join(output_folder, new_dicom_file))
+for i in range(resampled.shape[2]):
+    ds = ds_all[0].copy() #Not a complete hard copy
+    ds.Rows=output_shape[0]
+    ds.Columns=output_shape[1]
+    ds.PixelData = resampled[:, :, i].astype(np.uint16).tobytes()
+    ds.SliceThickness = ds.SliceThickness*scale
+    ds.SpacingBetweenSlices = ds.SpacingBetweenSlices*scale
+    ds.InstanceNumber = i+1
+    ds.ImagePositionPatient[2] = ds.ImagePositionPatient[2]+(i-0.5)*position_interval
+    ds.SliceLocation = ds.SliceLocation+(i-0.5)*slice_interval
+    ds.SOPInstanceUID=pydicom.uid.generate_uid()
+    ds_file = f"resampled_{i}.dcm"
+    ds.save_as(os.path.join(output_folder, ds_file))
 
