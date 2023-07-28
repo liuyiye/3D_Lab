@@ -275,9 +275,10 @@ from skimage import transform
 
 dcm_dir=r'c:\0'
 output_folder=r'c:\1'
-output_shape=(512,512,200)
+output_shape=(513,456,42) # (rows,columns,number of slices)
 
 files=os.listdir(dcm_dir)
+#sort along z-axis, change if cor or sag image
 files.sort(key=lambda x: pydicom.dcmread(os.path.join(dcm_dir, x)).ImagePositionPatient[2])
 
 ds_all = [pydicom.dcmread(os.path.join(dcm_dir, file)) for file in files] 
@@ -286,8 +287,9 @@ v = np.stack(p, axis=-1)
 
 resampled = transform.resize(v, output_shape, preserve_range=True, anti_aliasing=None, order=1)
 scale=v.shape[2]/output_shape[2]
-position_interval = (ds_all[2].ImagePositionPatient[2]-ds_all[1].ImagePositionPatient[2])*scale
+position_interval = (np.array(ds_all[2].ImagePositionPatient)-np.array(ds_all[1].ImagePositionPatient))*scale
 slice_interval = (ds_all[2].SliceLocation-ds_all[1].SliceLocation)*scale
+siuid = pydicom.uid.generate_uid()
 
 for i in range(resampled.shape[2]):
     ds = ds_all[0].copy() #Not a complete hard copy
@@ -297,8 +299,9 @@ for i in range(resampled.shape[2]):
     ds.SliceThickness = ds.SliceThickness*scale
     ds.SpacingBetweenSlices = ds.SpacingBetweenSlices*scale
     ds.InstanceNumber = i+1
-    ds.ImagePositionPatient[2] = ds.ImagePositionPatient[2]+(i-0.5)*position_interval
+    ds.ImagePositionPatient = (np.array(ds.ImagePositionPatient)+(i-0.5)*position_interval).tolist()
     ds.SliceLocation = ds.SliceLocation+(i-0.5)*slice_interval
+    ds.SeriesInstanceUID=siuid
     ds.SOPInstanceUID=pydicom.uid.generate_uid()
     ds_file = f"resampled_{i}.dcm"
     ds.save_as(os.path.join(output_folder, ds_file))
