@@ -4,8 +4,9 @@ for d in */; do
   name=${d%/}
   echo $name  
   rar a -r -m3 -sfx -ep1 $name $name/*
-  #  copy Default64.SFX from C:\Program Files\WinRAR
+  ##  copy Default64.SFX from C:\Program Files\WinRAR
   #  rar a -r -m3 -sfxDefault64.SFX -ep1 $name $name/*  
-  rar a -zc.txt $name.sfx
+  rar c -zc.txt $name.sfx
+  # mv $name.sfx $name.exe
 
 done
