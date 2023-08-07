@@ -161,6 +161,51 @@ for root, dirs, files in os.walk(dicom_folder):
        ds.save_as(os.path.join(new_folder, file))
 
 
+======精简2======
+
+import os
+import pydicom
+
+dicom_folder = r'C:\0'
+new_folder = r'C:\1'
+
+essential_all=	[0x80018,	0x200013,	0x20000d,0x20000e,	0x200032,	0x200037,0x280004,	0x280010,0x280011,0x280030,	0x280100,0x280101,	0x280103,0x7fe00010]
+essential_slicer=	[0x80018,		0x20000d,0x20000e,	0x200032,	0x200037,0x280004,	0x280010,0x280011,0x280030,	0x280100,0x280101,	0x280103,0x7fe00010]
+essential_ra=	[				0x200032,	0x200037,		0x280010,0x280011,0x280030,	0x280100,0x280101,	0x280103,0x7fe00010]
+essential_uih=	[	0x200013,			0x200032,	0x200037,		0x280010,0x280011,0x280030,			0x280103,0x7fe00010]
+essential_sante=	[				0x200032,	0x200037,		0x280010,0x280011,		0x280100,		0x280103,0x7fe00010]
+
+optional=[0x80020,0x8103e,0x100010,0x100020,0x281050,0x281051,0x281052,0x281053]	
+
+for root, dirs, files in os.walk(dicom_folder):
+    for file in files:
+       ds = pydicom.dcmread(os.path.join(root, file))
+       for elem in ds:
+           if elem.tag not in essential_all+optional:
+               del ds[elem.tag]
+       ds.save_as(os.path.join(new_folder, file))
+
+
+======del tag======
+
+import os
+import pydicom
+
+dicom_folder = r'C:\0'
+new_folder = r'C:\1'
+
+files=os.listdir(dicom_folder)
+
+for file in files:
+       ds = pydicom.dcmread(os.path.join(dicom_folder, file))
+       for elem in ds:
+           #if elem.tag.group==0x8 and elem.tag !=0x80018:
+           if elem.tag >=0x200052 and elem.tag <=0x280006:
+               del ds[elem.tag]
+       ds.save_as(os.path.join(new_folder, file))
+
+
+
 ==============
 
 import os
