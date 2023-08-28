@@ -1,0 +1,85 @@
+from pydicom import Dataset
+from pynetdicom import AE, debug_logger
+from pynetdicom.sop_class import PatientRootQueryRetrieveInformationModelFind
+
+debug_logger()
+
+ae = AE(ae_title=b'C3D')
+ae.add_requested_context(PatientRootQueryRetrieveInformationModelFind)
+
+ds = Dataset()
+ds.PatientID = '0032858510'
+ds.QueryRetrieveLevel = 'PATIENT'
+
+assoc = ae.associate('192.168.21.16',2002,ae_title=b'SDM')
+
+if assoc.is_established:
+    responses = assoc.send_c_find(ds, PatientRootQueryRetrieveInformationModelFind)
+    for (status, identifier) in responses:
+        if status:
+            print('C-FIND query status: 0x{0:04X}'.format(status.Status))
+        else:
+            print('Connection timed out, was aborted or received invalid response')
+
+    # Release the association
+    assoc.release()
+else:
+    print('Association rejected, aborted or never connected')
+
+=====================
+from pydicom import Dataset
+from pynetdicom import AE, debug_logger
+from pynetdicom.sop_class import PatientRootQueryRetrieveInformationModelMove
+
+debug_logger()
+
+ae = AE(ae_title=b'C3D')
+
+# Add a requested presentation context
+ae.add_requested_context(PatientRootQueryRetrieveInformationModelMove)
+
+ds = Dataset()
+ds.PatientID = '0032858510'
+ds.QueryRetrieveLevel = 'PATIENT'
+
+assoc = ae.associate('192.168.21.16',2002,ae_title=b'SDM')
+
+if assoc.is_established:
+    responses = assoc.send_c_move(ds, 'C3D', PatientRootQueryRetrieveInformationModelMove)
+    for (status, identifier) in responses:
+        if status:
+            print('C-MOVE query status: 0x{0:04x}'.format(status.Status))
+        else:
+            print('Connection timed out, was aborted or received invalid response')
+
+    # Release the association
+    assoc.release()
+else:
+    print('Association rejected, aborted or never connected')
+
+=====================
+import os
+import pydicom
+from pynetdicom import AE, debug_logger
+from pynetdicom.sop_class import CTImageStorage, MRImageStorage
+
+#debug_logger()
+
+ae = AE(ae_title=b'C3D')
+#C3D:172.20.99.82(11112),C3D2:192.168.19.145(11112)
+#PVDS:172.20.99.96(2209),PVDS1:172.20.99.73(2209)
+ae.add_requested_context(CTImageStorage)
+ae.add_requested_context(MRImageStorage)
+
+dcm_dir=r'C:\1'
+files=os.listdir(dcm_dir)
+ds_all = [pydicom.dcmread(os.path.join(dcm_dir, file)) for file in files] 
+
+assoc = ae.associate('192.168.21.16',2002,ae_title=b'SDM')
+
+if assoc.is_established:
+  for ds in ds_all:
+    status = assoc.send_c_store(ds)
+  assoc.release()
+
+==============
