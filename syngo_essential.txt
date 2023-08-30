@@ -1,0 +1,111 @@
+======精简syngo======
+
+import os
+import pydicom
+
+dicom_folder = r'C:\0'
+new_folder = r'C:\1'
+
+studyuid=pydicom.uid.generate_uid()
+seriesuid=pydicom.uid.generate_uid()
+
+essential_all=[0x80018,0x200013,0x20000d,0x20000e,0x200032,0x200037,0x280004,0x280010,0x280011,0x280030,0x280100,0x280101,0x280102,0x280103,0x7fe00010]
+optional=[0x80020,0x8103e,0x100010,0x100020,0x280002,0x281050,0x281051,0x281052,0x281053]	
+syngo=[0x80016,0x80020,0x80030,0x80050,0x80060,0x100030,0x200011]
+
+for root, dirs, files in os.walk(dicom_folder):
+    for file in files:
+       ds = pydicom.dcmread(os.path.join(root, file))
+       array=ds.pixel_array
+       ds.PixelData=array.tobytes()
+       for elem in ds:
+           if elem.tag not in essential_all+optional+syngo:
+               del ds[elem.tag]
+       ds.file_meta = pydicom.Dataset()
+       ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+       #ds.PatientID=''
+       #ds.PatientName=''
+       ds.StudyInstanceUID=studyuid
+       ds.SeriesInstanceUID=seriesuid
+       ds.SOPInstanceUID=pydicom.uid.generate_uid()
+       ds.save_as(os.path.join(new_folder, file))
+
+==================
+
+
+ds.TransferSyntaxUID = ''
+ds.SOPClassUID = ''
+ds.SOPInstanceUID = ''
+ds.StudyDate = ''
+ds.StudyTime = ''
+ds.AccessionNumber = ''
+ds.Modality = ''
+ds.SeriesDescription = ''
+ds.PatientName = ''
+ds.PatientID = ''
+ds.PatientBirthDate = ''
+ds.StudyInstanceUID = ''
+ds.SeriesInstanceUID = ''
+ds.SeriesNumber = ''
+ds.InstanceNumber = ''
+ds.ImagePositionPatient = ''
+ds.ImageOrientationPatient = ''
+ds.SamplesPerPixel = ''
+ds.PhotometricInterpretation = ''
+ds.NumberOfFrames = ''
+ds.Rows = ''
+ds.Columns = ''
+ds.PixelSpacing = ''
+ds.BitsAllocated = ''
+ds.BitsStored = ''
+ds.HighBit = ''
+ds.PixelRepresentation = ''
+ds.WindowCenter = ''
+ds.WindowWidth = ''
+ds.RescaleIntercept = ''
+ds.RescaleSlope = ''
+ds.RescaleType = ''
+
+==================
+20000	Group 0002 Length
+20002	Media Storage SOP Class UID
+20003	Media Storage SOP Instance UID
+20010	Transfer Syntax UID
+20012	Implementation Class UID
+20013	Implementation Version Name
+20016	Source Application Entity Title
+80005	Specific Character Set
+80008	Image Type
+80016	SOP Class UID
+80018	SOP Instance UID
+80020	Study Date
+80030	Study Time
+80050	Accession Number
+80060	Modality
+0008,103e	Series Description
+82111	Derivation Description
+100010	Patient's Name
+100020	Patient ID
+100030	Patient's Birth Date
+0020,000d	Study Instance UID
+0020,000e	Series Instance UID
+200011	Series Number
+200013	Instance Number
+200032	Image Position (Patient)
+200037	Image Orientation (Patient)
+280002	Samples per Pixel
+280004	Photometric Interpretation
+280008	Number of Frames
+280010	Rows
+280011	Columns
+280030	Pixel Spacing
+280100	Bits Allocated
+280101	Bits Stored
+280102	High Bit
+280103	Pixel Representation
+281050	Window Center
+281051	Window Width
+281052	Rescale Intercept
+281053	Rescale Slope
+281054	Rescale Type
+890010	Non-standard attribute
