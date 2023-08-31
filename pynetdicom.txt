@@ -73,7 +73,7 @@ ae.add_requested_context(MRImageStorage)
 
 dcm_dir=r'C:\1'
 files=os.listdir(dcm_dir)
-ds_all = [pydicom.dcmread(os.path.join(dcm_dir, file)) for file in files] 
+ds_all = [pydicom.dcmread(os.path.join(dcm_dir, file),force=True) for file in files] 
 
 assoc = ae.associate('192.168.21.16',2002,ae_title=b'SDM')
 
