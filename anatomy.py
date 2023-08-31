@@ -63,7 +63,7 @@ for file in files:
     ds.HighBit = 7
     ds.PixelRepresentation = 0
     ds.PixelData = np_image.tobytes()
-    ds.save_as(os.path.join(dcm_folder,str(n).zfill(4)))
+    ds.save_as(os.path.join(dcm_folder,str(n).zfill(4)),write_like_original=False)
   if 'RGB' in img.mode:
     np_image = np.array(img.getdata(),dtype = np.uint8)[:,:3]
     ds.SOPInstanceUID = pydicom.uid.generate_uid()
@@ -78,5 +78,5 @@ for file in files:
     ds.HighBit = 7
     ds.PixelRepresentation = 0
     ds.PixelData = np_image.tobytes()
-    ds.save_as(os.path.join(dcm_folder,str(n).zfill(4)))
+    ds.save_as(os.path.join(dcm_folder,str(n).zfill(4)),write_like_original=False)
   n=n+1
