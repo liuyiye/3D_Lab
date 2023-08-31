@@ -69,6 +69,7 @@ ae = AE(ae_title=b'C3D')
 #C3D:172.20.99.82(11112),C3D2:192.168.19.145(11112)
 #PVDS:172.20.99.96(2209),PVDS1:172.20.99.73(2209)
 ae.add_requested_context(CTImageStorage)
+#ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
 ae.add_requested_context(MRImageStorage)
 
 dcm_dir=r'C:\1'
