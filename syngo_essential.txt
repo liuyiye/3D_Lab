@@ -1,4 +1,4 @@
-======精简syngo======
+﻿======精简syngo,更改4个层级======
 
 import os
 import pydicom
@@ -16,19 +16,23 @@ syngo=[0x80016,0x80020,0x80030,0x80050,0x80060,0x100030,0x200011]
 for root, dirs, files in os.walk(dicom_folder):
     for file in files:
        ds = pydicom.dcmread(os.path.join(root, file))
-       array=ds.pixel_array
-       ds.PixelData=array.tobytes()
+       syntax=ds.file_meta.TransferSyntaxUID #keep possible JPEG Lossless
        for elem in ds:
            if elem.tag not in essential_all+optional+syngo:
                del ds[elem.tag]
        ds.file_meta = pydicom.Dataset()
-       ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+       ds.file_meta.TransferSyntaxUID = syntax
+       # remove possible JPEG Lossless, need GDCM
+       #array=ds.pixel_array
+       #ds.PixelData=array.tobytes()
+       #ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
        #ds.PatientID=''
        #ds.PatientName=''
        ds.StudyInstanceUID=studyuid
        ds.SeriesInstanceUID=seriesuid
        ds.SOPInstanceUID=pydicom.uid.generate_uid()
        ds.save_as(os.path.join(new_folder, file))
+
 
 ==================
 

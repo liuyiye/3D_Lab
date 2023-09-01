@@ -2,22 +2,33 @@ from pydicom import Dataset
 from pynetdicom import AE, debug_logger
 from pynetdicom.sop_class import PatientRootQueryRetrieveInformationModelFind
 
-debug_logger()
+#debug_logger()
 
 ae = AE(ae_title=b'C3D')
 ae.add_requested_context(PatientRootQueryRetrieveInformationModelFind)
 
 ds = Dataset()
-ds.PatientID = '0032858510'
-ds.QueryRetrieveLevel = 'PATIENT'
+ds.PatientID = 'anatomy'
+#ds.PatientName = 'anatomy'
+#ds.QueryRetrieveLevel = 'PATIENT'
+#ds.QueryRetrieveLevel = 'STUDY'
+ds.QueryRetrieveLevel = 'SERIES'
+#ds.QueryRetrieveLevel = "IMAGE"
+ds.StudyInstanceUID=''
+ds.StudyDescription=''
+ds.SeriesInstanceUID=''
+ds.SeriesDescription=''
+#ds.SOPInstanceUID=''
+print(ds,'\n')
 
 assoc = ae.associate('192.168.21.16',2002,ae_title=b'SDM')
 
 if assoc.is_established:
     responses = assoc.send_c_find(ds, PatientRootQueryRetrieveInformationModelFind)
-    for (status, identifier) in responses:
+    for (status, ds) in responses:
         if status:
             print('C-FIND query status: 0x{0:04X}'.format(status.Status))
+            print(ds,'\n')
         else:
             print('Connection timed out, was aborted or received invalid response')
 
@@ -25,6 +36,7 @@ if assoc.is_established:
     assoc.release()
 else:
     print('Association rejected, aborted or never connected')
+
 
 =====================
 from pydicom import Dataset
