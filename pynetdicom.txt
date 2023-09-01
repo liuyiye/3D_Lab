@@ -1,3 +1,5 @@
+==========FIND===========
+
 from pydicom import Dataset
 from pynetdicom import AE, debug_logger
 from pynetdicom.sop_class import PatientRootQueryRetrieveInformationModelFind
@@ -38,7 +40,8 @@ else:
     print('Association rejected, aborted or never connected')
 
 
-=====================
+==========MOVE===========
+
 from pydicom import Dataset
 from pynetdicom import AE, debug_logger
 from pynetdicom.sop_class import PatientRootQueryRetrieveInformationModelMove
@@ -51,7 +54,7 @@ ae = AE(ae_title=b'C3D')
 ae.add_requested_context(PatientRootQueryRetrieveInformationModelMove)
 
 ds = Dataset()
-ds.PatientID = '0032858510'
+ds.PatientID = 'anatomy'
 ds.QueryRetrieveLevel = 'PATIENT'
 
 assoc = ae.associate('192.168.21.16',2002,ae_title=b'SDM')
@@ -69,7 +72,9 @@ if assoc.is_established:
 else:
     print('Association rejected, aborted or never connected')
 
-=====================
+
+==========STORE===========
+
 import os
 import pydicom
 from pynetdicom import AE, debug_logger
@@ -95,4 +100,82 @@ if assoc.is_established:
     status = assoc.send_c_store(ds)
   assoc.release()
 
-==============
+
+==========SCP===========
+
+import os
+from pynetdicom import (
+    AE, debug_logger, evt, AllStoragePresentationContexts,
+    ALL_TRANSFER_SYNTAXES
+     )
+store_folder=r'C:\1'
+debug_logger()
+
+def handle_store(event):
+    """Handle EVT_C_STORE events."""
+    ds = event.dataset
+    ds.file_meta = event.file_meta
+    ds.save_as(os.path.join(store_folder,ds.SOPInstanceUID), write_like_original=False)
+    return 0x0000
+
+handlers = [(evt.EVT_C_STORE, handle_store)]
+
+ae = AE(ae_title=b'C3D')
+
+storage_sop_classes = [
+     cx.abstract_syntax for cx in AllStoragePresentationContexts
+     ]
+
+#print('storage_sop_classes:\n',storage_sop_classes)
+
+for uid in storage_sop_classes:
+    ae.add_supported_context(uid, ALL_TRANSFER_SYNTAXES)
+
+#print('supported_contexts:\n',ae.supported_contexts)
+
+ae.start_server(("127.0.0.1", 11112), block=True, evt_handlers=handlers)
+#Ctrl-C to break
+
+
+==========SCP2===========
+
+import os
+from pydicom.filewriter import write_file_meta_info
+from pynetdicom import (
+     AE, debug_logger, evt, AllStoragePresentationContexts,
+     ALL_TRANSFER_SYNTAXES
+ )
+storage_dir=r'C:\1'
+debug_logger()
+
+def handle_store(event):
+     """Handle EVT_C_STORE events."""
+     try:
+         os.makedirs(storage_dir, exist_ok=True)
+     except:
+         # Unable to create output dir, return failure status
+         return 0xC001
+
+     # We rely on the UID from the C-STORE request instead of decoding
+     fname = os.path.join(storage_dir, event.request.AffectedSOPInstanceUID)
+     with open(fname, 'wb') as f:
+         # Write the preamble, prefix and file meta information elements
+         f.write(b'\x00' * 128)
+         f.write(b'DICM')
+         write_file_meta_info(f, event.file_meta)
+         # Write the raw encoded dataset
+         f.write(event.request.DataSet.getvalue())
+
+     return 0x0000
+
+handlers = [(evt.EVT_C_STORE, handle_store)]
+
+ae = AE(ae_title=b'C3D')
+storage_sop_classes = [
+     cx.abstract_syntax for cx in AllStoragePresentationContexts
+ ]
+for uid in storage_sop_classes:
+     ae.add_supported_context(uid, ALL_TRANSFER_SYNTAXES)
+
+ae.start_server(("127.0.0.1", 11112), block=True, evt_handlers=handlers)
+#Ctrl-C to break
