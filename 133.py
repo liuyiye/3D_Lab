@@ -1,4 +1,4 @@
-def t3237(dcmdir='c:/0'):
+﻿def t3237(dcmdir='c:/0'):
   import os
   import pydicom
   import numpy as np
@@ -86,13 +86,15 @@ def c3d(dcmdir='c:/0'):
   import os
   import pydicom
   from pynetdicom import AE, debug_logger
-  from pynetdicom.sop_class import CTImageStorage, MRImageStorage
+  from pynetdicom.sop_class import CTImageStorage,MRImageStorage,SecondaryCaptureImageStorage
   #debug_logger()
   ae = AE(ae_title=b'C3D')
   ae.add_requested_context(CTImageStorage)
   ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
   ae.add_requested_context(MRImageStorage)
   ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
+  ae.add_requested_context(SecondaryCaptureImageStorage)
+  ae.add_requested_context(SecondaryCaptureImageStorage,[pydicom.uid.JPEGLosslessSV1])
   files=os.listdir(dcmdir)
   ds_all = [pydicom.dcmread(os.path.join(dcmdir, file),force=True) for file in files]
   assoc = ae.associate('192.168.21.16',2002,ae_title=b'SDM')
