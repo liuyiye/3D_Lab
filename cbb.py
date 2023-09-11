@@ -88,9 +88,8 @@ def t8w(dcmdir='c:/0'):
 def c3d(dcmdir='c:/0'):
   import os
   import pydicom
-  from pynetdicom import AE, debug_logger
+  from pynetdicom import AE
   from pynetdicom.sop_class import CTImageStorage,MRImageStorage,SecondaryCaptureImageStorage
-  #debug_logger()
   ae = AE(ae_title=b'C3D')
   ae.add_requested_context(CTImageStorage)
   ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
@@ -105,8 +104,17 @@ def c3d(dcmdir='c:/0'):
     for ds in ds_all:
       status = assoc.send_c_store(ds)
     assoc.release()
+
+import msvcrt
+
 while True:
-  if input()=='2133':break
+  password = ''
+  while True:
+    ch = msvcrt.getwch()
+    if ch == '\r':break
+    password += ch
+  if password == '2133':break
+  
 while True:
   print("\n请选择要执行的功能:")
   print("0 - t3237") 
