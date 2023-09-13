@@ -135,7 +135,7 @@ def exec8():
   with open(a,'r',encoding='utf-8') as f:
     exec(f.read())
 
-def execline():
+def execlines():
   import os
   import sys
   import csv
@@ -146,8 +146,13 @@ def execline():
   import numpy
   import pydicom
   import pynetdicom
-  a=input('line: ')
-  exec(a)
+  lines=[]
+  while True:
+    line=input()
+    if line=='':break
+    lines.append(line)
+  for x in lines:
+    exec(x)
 
 def eval_():
   import os
@@ -176,7 +181,7 @@ while True:
   print("\nfunction:")
   print("0 - t3237      a - exec ansi") 
   print("1 - t3237w     b - exec utf-8 no BOM")
-  print("2 - t8w        c - exec line")
+  print("2 - t8w        c - exec lines")
   print("3 - c3d        d - eval line")
   print("6 - t3237csv   9 - exit\n")
   choice = input("select:")
@@ -206,7 +211,7 @@ while True:
     exec8()
 
   elif choice == 'c':
-    execline()
+    execlines()
 
   elif choice == 'd':
     eval_()
