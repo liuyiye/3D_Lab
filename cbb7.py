@@ -106,6 +106,7 @@ def c3d(dcmdir='c:/0'):
     assoc.release()
 
 def exec_():
+  import io
   import os
   import sys
   import csv
@@ -121,6 +122,7 @@ def exec_():
     exec(f.read())
 
 def exec8():
+  import io
   import os
   import sys
   import csv
@@ -136,6 +138,7 @@ def exec8():
     exec(f.read())
 
 def execlines():
+  import io
   import os
   import sys
   import csv
@@ -146,15 +149,18 @@ def execlines():
   import numpy
   import pydicom
   import pynetdicom
-  lines=[]
+  print('lines:\n')
+  mem_file=io.StringIO()
   while True:
     line=input()
     if line=='':break
-    lines.append(line)
-  for x in lines:
-    exec(x)
+    mem_file.write(line+'\n')
+  code=mem_file.getvalue()
+  print(code)
+  exec(code)
 
 def eval_():
+  import io
   import os
   import sys
   import csv
@@ -165,7 +171,7 @@ def eval_():
   import numpy
   import pydicom
   import pynetdicom
-  a=input('line: ')
+  a=input('line: \n')
   print(eval(a))
 
 import msvcrt
@@ -176,7 +182,7 @@ while True:
     if ch == '\r':break
     password += ch
   if password == '2133f':break
-  
+
 while True:
   print("\nfunction:")
   print("0 - t3237      a - exec ansi") 
@@ -188,16 +194,16 @@ while True:
 
   if choice == '9': 
     break
-  
+
   elif choice == '0':
     t3237()
-  
+
   elif choice == '1':
     t3237w()
 
   elif choice == '2':
     t8w()
-  
+
   elif choice == '3':
     c3d()
 
@@ -206,7 +212,7 @@ while True:
 
   elif choice == 'a':
     exec_()
-  
+
   elif choice == 'b':
     exec8()
 
