@@ -211,19 +211,19 @@ while True:
 
   elif choice == 'a':
     try:exec_()
-    except:print('error!')
+    except Exception as e:print(e)
 
   elif choice == 'b':
     try:exec8()
-    except:print('error!')
+    except Exception as e:print(e)
 
   elif choice == 'c':
     try:execlines()
-    except:print('error!')
+    except Exception as e:print(e)
 
   elif choice == 'd':
     try:eval_()
-    except:print('error!')
+    except Exception as e:print(e)
 
   else:
     print(choice)
