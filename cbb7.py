@@ -149,14 +149,13 @@ def execlines():
   import numpy
   import pydicom
   import pynetdicom
-  print('lines:\n')
+  print('lines:')
   mem_file=io.StringIO()
   while True:
     line=input()
     if line=='':break
     mem_file.write(line+'\n')
   code=mem_file.getvalue()
-  print(code)
   exec(code)
 
 def eval_():
@@ -184,8 +183,8 @@ while True:
   if password == '2133f':break
 
 while True:
-  print("\nfunction:")
-  print("0 - t3237      a - exec ansi") 
+  print("\nfunctions:")
+  print("0 - t3237      a - exec ansi GBK") 
   print("1 - t3237w     b - exec utf-8 no BOM")
   print("2 - t8w        c - exec lines")
   print("3 - c3d        d - eval line")
@@ -211,16 +210,20 @@ while True:
     t3237csv()
 
   elif choice == 'a':
-    exec_()
+    try:exec_()
+    except:print('error!')
 
   elif choice == 'b':
-    exec8()
+    try:exec8()
+    except:print('error!')
 
   elif choice == 'c':
-    execlines()
+    try:execlines()
+    except:print('error!')
 
   elif choice == 'd':
-    eval_()
+    try:eval_()
+    except:print('error!')
 
   else:
     print(choice)
