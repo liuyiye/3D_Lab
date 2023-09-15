@@ -1,4 +1,4 @@
-def e():
+def py():
   import io
   print('lines:')
   mem_file=io.StringIO()
@@ -10,5 +10,5 @@ def e():
   exec(code)
 
 while True:
-  try:e()
-  except:print('error!\n')
+  try:py()
+  except Exception as e:print(e)
