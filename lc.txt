@@ -376,3 +376,29 @@ for ori,modified in zip(files_ori,files_modified):
     ds_ori.save_as(os.path.join(folder_output,ori))
 
 
+=======pixel2=======
+import os
+import pydicom
+
+folder_ori = r'C:\0'
+folder_modified = r'C:\1'
+folder_output = r'C:\2'
+
+files_ori=os.listdir(folder_ori)
+#sort along z-axis, change if cor or sag image
+files_ori.sort(key=lambda x: pydicom.dcmread(os.path.join(folder_ori, x)).ImagePositionPatient[2])
+files_modified=os.listdir(folder_modified)
+files_modified.sort(key=lambda x: pydicom.dcmread(os.path.join(folder_modified, x)).ImagePositionPatient[2])
+siuid=pydicom.uid.generate_uid()
+for ori,modified in zip(files_ori,files_modified):
+    ds_ori = pydicom.dcmread(os.path.join(folder_ori,ori))
+    ds_modified = pydicom.dcmread(os.path.join(folder_modified,modified))
+    ds_ori.PixelRepresentation=ds_modified.PixelRepresentation
+    ds_ori.RescaleIntercept=ds_modified.RescaleIntercept
+    ds_ori.SeriesDescription='3D_Lab_'+ds_ori.SeriesDescription
+    ds_ori.SeriesInstanceUID=siuid
+    ds_ori.SOPInstanceUID=pydicom.uid.generate_uid()
+    ds_ori.PixelData=ds_modified.PixelData
+    ds_ori.file_meta.TransferSyntaxUID='1.2.840.10008.1.2.1'
+    ds_ori.save_as(os.path.join(folder_output,ori))
+
