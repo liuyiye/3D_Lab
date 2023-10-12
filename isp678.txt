@@ -4,6 +4,13 @@ def c3d(IP,PORT,ISP):
   import pydicom
   from pynetdicom import AE
   from pynetdicom.sop_class import CTImageStorage,MRImageStorage,SecondaryCaptureImageStorage
+
+  dcmdir='c:/1'
+  file_list = []
+  for root, dirs, files in os.walk(dcmdir):
+    for file in files:
+      file_list.append(os.path.join(root, file))
+
   ae = AE(ae_title=b'C3D')
   ae.add_requested_context(CTImageStorage)
   ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
@@ -11,13 +18,17 @@ def c3d(IP,PORT,ISP):
   ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
   ae.add_requested_context(SecondaryCaptureImageStorage)
   ae.add_requested_context(SecondaryCaptureImageStorage,[pydicom.uid.JPEGLosslessSV1])
-  dcmdir='c:/1'
-  files=os.listdir(dcmdir)
-  ds_all = [pydicom.dcmread(os.path.join(dcmdir, file),force=True) for file in files]
+  
   assoc = ae.associate(IP,PORT,ae_title=ISP)
   if assoc.is_established:
-    for ds in ds_all:
-      status = assoc.send_c_store(ds)
+    for f in file_list:
+      try:
+        ds = pydicom.dcmread(f)
+        is_dicom = True
+      except:
+        is_dicom = False
+      if is_dicom:
+        status = assoc.send_c_store(ds)
     assoc.release()
 
 
@@ -41,21 +52,25 @@ while True:
 
   if choice == '9': 
     break
-  
+
   elif choice == '6':
-    c3d('172.21.97.26',104,'PH_ISP01_ADV_AE')
-  
+    try:c3d('172.21.97.26',104,'PH_ISP01_ADV_AE')
+    except Exception as e:print(e)
+
   elif choice == '7':
-    c3d('172.21.97.27',104,'PH_ISP02_ADV_AE')
+    try:c3d('172.21.97.27',104,'PH_ISP02_ADV_AE')
+    except Exception as e:print(e)
 
   elif choice == '8':
-    c3d('172.21.97.28',104,'PH_ISP03_ADV_AE')
+    try:c3d('172.21.97.28',104,'PH_ISP03_ADV_AE')
+    except Exception as e:print(e)
 
   elif choice == 'i':
     IP = input("please input IP: ")
     PORT = int(input("please input PORT: "))
     ISP = input("please input AE_TITLE: ")
-    c3d(IP,PORT,ISP)
+    try:c3d(IP,PORT,ISP)
+    except Exception as e:print(e)
 
   else:
     print("wrong input")
