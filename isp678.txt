@@ -1,0 +1,63 @@
+﻿
+def c3d(IP,PORT,ISP):
+  import os
+  import pydicom
+  from pynetdicom import AE
+  from pynetdicom.sop_class import CTImageStorage,MRImageStorage,SecondaryCaptureImageStorage
+  ae = AE(ae_title=b'C3D')
+  ae.add_requested_context(CTImageStorage)
+  ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
+  ae.add_requested_context(MRImageStorage)
+  ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
+  ae.add_requested_context(SecondaryCaptureImageStorage)
+  ae.add_requested_context(SecondaryCaptureImageStorage,[pydicom.uid.JPEGLosslessSV1])
+  dcmdir='c:/1'
+  files=os.listdir(dcmdir)
+  ds_all = [pydicom.dcmread(os.path.join(dcmdir, file),force=True) for file in files]
+  assoc = ae.associate(IP,PORT,ae_title=ISP)
+  if assoc.is_established:
+    for ds in ds_all:
+      status = assoc.send_c_store(ds)
+    assoc.release()
+
+
+import msvcrt
+while True:
+  password = ''
+  while True:
+    ch = msvcrt.getwch()
+    if ch == '\r':break
+    password += ch
+  if password == '678':break
+
+
+while True:
+  print("\nC:\\1\n")
+  print("6 - 26") 
+  print("7 - 27")
+  print("8 - 28")
+  print("9 - exit\n")
+  choice = input("please input number: ")
+
+  if choice == '9': 
+    break
+  
+  elif choice == '6':
+    c3d('172.21.97.26',104,'PH_ISP01_ADV_AE')
+  
+  elif choice == '7':
+    c3d('172.21.97.27',104,'PH_ISP02_ADV_AE')
+
+  elif choice == '8':
+    c3d('172.21.97.28',104,'PH_ISP03_ADV_AE')
+
+  elif choice == 'i':
+    IP = input("please input IP: ")
+    PORT = int(input("please input PORT: "))
+    ISP = input("please input AE_TITLE: ")
+    c3d(IP,PORT,ISP)
+
+  else:
+    print("wrong input")
+
+print("exit!")
