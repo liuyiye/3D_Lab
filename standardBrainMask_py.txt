@@ -1,0 +1,28 @@
+
+brain= {
+0:'None',
+1:'右侧额叶    FrontalLobe_R mask',
+2:'左侧额叶    FrontalLobe_L mask',
+3:'右侧颞叶    TemporalLobe_R mask',
+4:'右侧枕叶    OccipitalLobe_R mask',
+5:'左侧枕叶    OccipitalLobe_L mask',
+6:'右侧顶叶    ParietalLobe_R mask',
+7:'左侧顶叶    ParietalLobe_L mask',
+9:'右侧小脑      Cerebellum_R mask',
+10:'左侧岛叶    InsularLobe_L mask',
+11:'左侧颞叶    TemporalLobe_L mask',
+13:'右侧岛叶    InsularLobe_R mask',
+18:'左侧基底节  BasalGanglia_L mask',
+19:'右侧基底节  BasalGanglia_R mask',
+21:'右侧丘脑    Thalamus_R mask',
+22:'左侧丘脑    Thalamus_L mask',
+23:'胼胝体        CorpusCallosum mask',
+24:'脑干           BrainStem mask',
+28:'左侧小脑    Cerebellum_L mask'
+}
+
+from collections import Counter
+c = Counter(a.flatten())
+for v in sorted(c):
+    print(v,brain[v],c[v])
+
