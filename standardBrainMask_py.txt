@@ -24,5 +24,8 @@ brain= {
 from collections import Counter
 c = Counter(a.flatten())
 for v in sorted(c):
-    print(v,brain[v],c[v])
+    if v in brain:
+        print(v,brain[v],c[v])
+    #else:
+        #print(v,c[v])
 
