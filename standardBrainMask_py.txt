@@ -34,15 +34,16 @@ c2 = Counter(mask2.flatten())
 
 for v in sorted(c):
     if v in brain:
-        print(v,brain[v],c[v])
+        print(v,brain[v],round(c[v]/1000,2))
     #else:
-        #print(v,c[v])
+        #print(v,round(c[v]/1000,2))
 
 result={}
 for v in sorted(c2):
     if v in brain:
-        print(v,brain[v],c2[v],c[v],c2[v]/c[v])
-        result[(v,brain[v],c2[v],c[v])]=c2[v]/c[v]
+        print(v,brain[v],round(c2[v]/1000,2),round(c[v]/1000,2),round(c2[v]/c[v],3))
+        result[(v,brain[v],round(c2[v]/1000,2),round(c[v]/1000,2))]=round(c2[v]/c[v],3)
 
 for i in sorted(result,key=result.get,reverse=True):
     print(i,result[i])
+
