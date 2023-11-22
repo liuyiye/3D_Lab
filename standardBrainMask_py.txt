@@ -1,6 +1,5 @@
 
 brain= {
-0:'None',
 1:'右侧额叶    FrontalLobe_R mask',
 2:'左侧额叶    FrontalLobe_L mask',
 3:'右侧颞叶    TemporalLobe_R mask',
@@ -21,11 +20,29 @@ brain= {
 28:'左侧小脑    Cerebellum_L mask'
 }
 
+node_flair=getNode('flair')
+flair=arrayFromVolume(node_flair)
+
+node_mask=getNode('mask')
+mask=arrayFromVolume(node_mask)
+mask2=mask.copy()
+mask2[flair==0]=0
+
 from collections import Counter
-c = Counter(a.flatten())
+c = Counter(mask.flatten())
+c2 = Counter(mask2.flatten())
+
 for v in sorted(c):
     if v in brain:
         print(v,brain[v],c[v])
     #else:
         #print(v,c[v])
 
+result={}
+for v in sorted(c2):
+    if v in brain:
+        print(v,brain[v],c2[v],c[v],c2[v]/c[v])
+        result[(v,brain[v],c2[v],c[v])]=c2[v]/c[v]
+
+for i in sorted(result,key=result.get,reverse=True):
+    print(i,result[i])
