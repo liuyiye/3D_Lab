@@ -7,7 +7,7 @@ from skimage.filters import threshold_otsu
 from collections import Counter
 
 
-#三维mask最大长径平面的最小外接2D矩形
+#三维mask轴位图像最大长径所在平面的最小外接2D矩形
 def max2d(mask):
     z_slices = np.unique(np.where(mask)[0])
     max_length=0
@@ -21,7 +21,21 @@ def max2d(mask):
             max_length=max(rect[1][0],rect[1][1])
             width=min(rect[1][0],rect[1][1])
             max_z=z
-    return(max_z,round(max_length/10,1),round(width/10,1))
+    return(max_z,round(max_length/10,1),round(width/10,1),round(mask[max_z,:,:].sum()/100,2))
+
+
+#三维mask轴位图像最大面积所在平面的最小外接2D矩形
+def max_area(mask):
+    coords3d = np.array(np.where(mask)).T
+    z_counter = Counter([p[0] for p in coords3d])
+    max_z = z_counter.most_common(1)[0][0]
+    max_area = z_counter.most_common(1)[0][1]
+    slice_mask=mask[max_z,:,:]
+    coords2d = np.array(np.where(slice_mask)).T
+    rect=minAreaRect(coords2d)
+    max_length=max(rect[1][0],rect[1][1])
+    width=min(rect[1][0],rect[1][1])
+    return(max_z,round(max_length/10,1),round(width/10,1),round(max_area/100,2))
 
 
 #三维mask最小外接3D柱体
@@ -65,19 +79,21 @@ def w():
     max_flair[:]=0
     max_flair[labels==flair_sorted[0]]=1
     max_flair_2d=max2d(max_flair)
+    max_flair_area=max_area(max_flair)
     max_flair_3d=max3d(max_flair)
     
-    print(f"\n脑白质高信号共有{regions}个区域,总体积为{round(total/1000,2)} 立方厘米")
-    print(f"体积最大病灶的最大平面位于第{max_flair_2d[0]}层面，长度为{max_flair_2d[1]}厘米，宽度为{max_flair_2d[2]}厘米,最大三维长径为{max_flair_3d}厘米")
+    print(f"\n脑白质高信号共有{regions}个区域,总体积为{round(total/1000,2)}立方厘米")
+    print(f"体积最大病灶的轴位最大长径位于第{max_flair_2d[0]}层面，长度为{max_flair_2d[1]}厘米，宽度为{max_flair_2d[2]}厘米，面积为{max_flair_2d[3]}平方厘米，最大三维长径为{max_flair_3d}厘米")
+    print(f"体积最大病灶的轴位最大面积位于第{max_flair_area[0]}层面，长度为{max_flair_area[1]}厘米，宽度为{max_flair_area[2]}厘米，面积为{max_flair_area[3]}平方厘米")
     
     if regions>3:
         print("\n其中最大的三个区域的体积为:")
         for i in flair_sorted[:3]:
-            print(f"{round(flair_volume[i]/1000,2)} 立方厘米")
+            print(f"{round(flair_volume[i]/1000,2)}立方厘米")
     else:
         print("\n每个区域的体积为:")
         for i in flair_sorted:
-            print(f"{round(flair_volume[i]/1000,2)} 立方厘米")
+            print(f"{round(flair_volume[i]/1000,2)}立方厘米")
     '''
     #another method
     for i in flair_sorted[:3]:
@@ -120,25 +136,22 @@ def w():
     print()
     for i in sorted(c1):
         if i in brain_lobe:
-            print(f"序号{i},{brain_lobe[i]}的体积为：{round(c1[i]/1000,2)} 立方厘米")
+            print(f"序号{i},{brain_lobe[i]}的体积为：{round(c1[i]/1000,2)}立方厘米")
         #else:
             #print(i,round(c1[i]/1000,2))
-    print()
     
-    result1={}
-    result2={}
+    print()
+    ratio={}
     for i in sorted(c2):
         if i in brain_lobe:
-            print(f"序号{i},{brain_lobe[i]}的体积为：{round(c1[i]/1000,2)} 立方厘米，该叶内的白质高信号体积为：{round(c2[i]/1000,2)} 立方厘米，白质高信号占比为：{round(c2[i]/c1[i],3)}")
-            result1[i]=round(c2[i]/c1[i],3)
-            result2[i]=round(c2[i]/1000,2)
-    print()
+            print(f"序号{i},{brain_lobe[i]}的体积为：{round(c1[i]/1000,2)}立方厘米，该叶内的白质高信号体积为：{round(c2[i]/1000,2)}立方厘米，白质高信号占比为：{round(c2[i]/c1[i],3)}")
+            ratio[i]=100*round(c2[i]/c1[i],3)
     
-    max1=sorted(result1,key=result1.get,reverse=True)
-    max2=sorted(result2,key=result2.get,reverse=True)
-    print(f"白质高信号最大占比位于{max1[0]},{brain_lobe[max1[0]]}，占比为：{100*round(c2[max1[0]]/c1[max1[0]],3)}%")
-    print(f"白质高信号最大体积位于{max2[0]},{brain_lobe[max2[0]]}，该叶内的白质高信号体积为：{round(c2[max2[0]]/1000,2)} 立方厘米")
-
+    print()
+    max1=sorted(ratio,key=ratio.get,reverse=True)
+    max2=c2.most_common()
+    print(f"白质高信号最大占比位于{max1[0]}，{brain_lobe[max1[0]]}，占比为：{ratio[max1[0]]}%")
+    print(f"白质高信号最大体积位于{max2[0][0]}，{brain_lobe[max2[0][0]]}，该叶内的白质高信号体积为：{round(max2[0][1]/1000,2)}立方厘米")
 
 
 
