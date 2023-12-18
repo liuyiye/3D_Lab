@@ -1,26 +1,10 @@
-﻿import numpy as np
+import numpy as np
 import open3d
 import slicer
 from cv2 import minAreaRect
 from skimage import measure
 from skimage.filters import threshold_otsu
 from collections import Counter
-
-mask_node=slicer.util.getNode('mask')
-mask=slicer.util.arrayFromVolume(mask_node)
-
-t1_node=slicer.util.getNode('t1')
-t1=slicer.util.arrayFromVolume(t1_node)
-thresh = threshold_otsu(t1[mask>0]) #mask范围内T1WI脑脊液和脑组织的阈值
-
-brain=mask.copy()
-brain[:]=0
-brain[(mask>0) & (t1 >= thresh)] = 1 #brain只保留脑组织，不要脑脊液
-
-flair_node=slicer.util.getNode('flair')
-flair=slicer.util.arrayFromVolume(flair_node)
-#flair[brain==0]=0 #可能被脑脊液分割开
-#flair[mask==0]=0 #可能被脑叶交界区分割开
 
 
 #三维mask最大长径平面的最小外接2D矩形
@@ -51,6 +35,22 @@ def max3d(mask):
 
 #白质高信号定量
 def w():
+    mask_node=slicer.util.getNode('mask')
+    mask=slicer.util.arrayFromVolume(mask_node)
+    
+    t1_node=slicer.util.getNode('t1')
+    t1=slicer.util.arrayFromVolume(t1_node)
+    thresh = threshold_otsu(t1[mask>0]) #mask范围内T1WI脑脊液和脑组织的阈值
+    
+    brain=mask.copy()
+    brain[:]=0
+    brain[(mask>0) & (t1 >= thresh)] = 1 #brain只保留脑组织，不要脑脊液
+    
+    flair_node=slicer.util.getNode('flair')
+    flair=slicer.util.arrayFromVolume(flair_node)
+    #flair[brain==0]=0 #可能被脑脊液分割开
+    #flair[mask==0]=0 #可能被脑叶交界区分割开
+    
     # 标记flair连通域并获取属性
     labels = measure.label(flair, connectivity=1)
     props = measure.regionprops(labels)
@@ -88,31 +88,26 @@ def w():
         print(f"axis_major_length {props[i-1].axis_major_length}")
         print(f"axis_minor_length {props[i-1].axis_minor_length}")'''
     
-    v()
-
-
-#计算脑叶体积
-def v():
     brain_lobe= {
-1:'右侧额叶',
-2:'左侧额叶',
-3:'右侧顶叶',
-4:'左侧顶叶',
-5:'右侧枕叶',
-6:'左侧枕叶',
-7:'右侧颞叶',
-8:'左侧颞叶',
-9:'右侧岛叶',
-10:'左侧岛叶',
-11:'右侧小脑',
-12:'左侧小脑',
-13:'右侧基底节',
-14:'左侧基底节',
-15:'右侧丘脑',
-16:'左侧丘脑',
-17:'胼胝体',
-18:'脑干'
-}
+    1:'右侧额叶',
+    2:'左侧额叶',
+    3:'右侧顶叶',
+    4:'左侧顶叶',
+    5:'右侧枕叶',
+    6:'左侧枕叶',
+    7:'右侧颞叶',
+    8:'左侧颞叶',
+    9:'右侧岛叶',
+    10:'左侧岛叶',
+    11:'右侧小脑',
+    12:'左侧小脑',
+    13:'右侧基底节',
+    14:'左侧基底节',
+    15:'右侧丘脑',
+    16:'左侧丘脑',
+    17:'胼胝体',
+    18:'脑干'
+    }
     
     mask1=mask.copy()
     mask1[brain==0]=0
