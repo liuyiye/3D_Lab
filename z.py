@@ -66,9 +66,8 @@ def find_edge_3d(mask):
     shifted5 = np.roll(mask, 1, axis=2)
     shifted6 = np.roll(mask, -1, axis=2)
     
-    # 计算差异，找到边缘。-1 or 1 = -1,所以使用clip将结果限制在0和1。也可用mask.astype(bool)，-1 or 1 就等于1了。前者代码更简单。
-    edge_mask = (mask - shifted1) | (mask - shifted2) | (mask - shifted3) | (mask - shifted4)| (mask - shifted5) | (mask - shifted6)
-    edge_mask =edge_mask.clip(0, 1)
+    # 计算差异，找到边缘。
+    edge_mask = (mask > shifted1) | (mask > shifted2) | (mask > shifted3) | (mask > shifted4)| (mask > shifted5) | (mask > shifted6)
     return edge_mask
 
 
@@ -80,8 +79,8 @@ def find_edge_2d(mask):
     shifted3 = np.roll(mask, 1, axis=1)
     shifted4 = np.roll(mask, -1, axis=1)
     
-    # 计算差异，找到边缘。-1 or 1 = -1,所以使用clip将结果限制在0和1。也可用mask.astype(bool)，-1 or 1 就等于1了。前者代码更简单。
-    edge_mask = (mask - shifted1) | (mask - shifted2) | (mask - shifted3) | (mask - shifted4)
+    # 计算差异，找到边缘。
+    edge_mask = (mask > shifted1) | (mask > shifted2) | (mask > shifted3) | (mask > shifted4)
     edge_mask =edge_mask.clip(0, 1)
     return edge_mask
 
