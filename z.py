@@ -168,9 +168,11 @@ def w():
     lesions = len(flair_volume)
     total = sum(flair_volume.values())
     flair_sorted = sorted(flair_volume,key=flair_volume.get,reverse=True)
-    flair_volume_10 = {i:j for i,j in flair_volume.items() if j >= 10}
+    
+    #flair_volume_10 = {i:j for i,j in flair_volume.items() if j >= 10}
+    flair_volume_10 = [i for i in flair_volume.values() if i >= 10]
     lesions_10 = len(flair_volume_10)
-    total_10 = sum(flair_volume_10.values())
+    total_10 = sum(flair_volume_10)
     
     max_flair=flair.copy()
     max_flair[:]=0
