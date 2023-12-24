@@ -110,12 +110,13 @@ def true_max2d(mask):
     
     for z in z_slices:
         slice_mask = find_edge_2d(mask[z,:, :])
-        temp=true_max3d(slice_mask)
-        if max_2d_in_slice < temp[0]:
-            max_2d_in_slice = temp[0]
-            max_2d_z_value = z
-            point1=[z,temp[1][0],temp[1][1]]
-            point2=[z,temp[2][0],temp[2][1]]
+        if slice_mask.sum()>1:#跳过只有一个体素的病灶
+            temp=true_max3d(slice_mask)
+            if max_2d_in_slice < temp[0]:
+                max_2d_in_slice = temp[0]
+                max_2d_z_value = z
+                point1=[z,temp[1][0],temp[1][1]]
+                point2=[z,temp[2][0],temp[2][1]]
     
     return(max_2d_z_value,max_2d_in_slice,point1,point2)
 
@@ -161,11 +162,15 @@ def w():
     
     # 标记flair连通域并获取属性
     labels = measure.label(flair, connectivity=1)
-    lesions=labels.max()
-    total=(labels!=0).sum()
-    
+    #props = measure.regionprops(labels)
+
     flair_volume = Counter(labels[labels>0])
+    lesions = len(flair_volume)
+    total = sum(flair_volume.values())
     flair_sorted = sorted(flair_volume,key=flair_volume.get,reverse=True)
+    flair_volume_10 = {i:j for i,j in flair_volume.items() if j >= 10}
+    lesions_10 = len(flair_volume_10)
+    total_10 = sum(flair_volume_10.values())
     
     max_flair=flair.copy()
     max_flair[:]=0
@@ -190,7 +195,7 @@ def w():
     c3 = Counter(mask3[mask3>0])
     max3=c3.most_common()
     
-    print(f"\n脑白质高信号共有{lesions}个病灶,总体积为{round(total/1000,2)}立方厘米")
+    print(f"\n脑白质高信号共有{lesions}个病灶,总体积为{round(total/1000,2)}立方厘米。体积大于等于0.01立方厘米的病灶有{lesions_10}个，其总体积为{round(total_10/1000,2)}立方厘米")
     if lesions>3:
         print("其中最大的三个病灶的体积为:")
         for i in flair_sorted[:3]:
