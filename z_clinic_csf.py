@@ -128,7 +128,8 @@ def w():
     }
     
     csf=[4,5,14,15,24,43,44]
-    synthseg=slicer.util.arrayFromVolume(slicer.util.getNode('synthseg'))
+    synthseg_ori=slicer.util.arrayFromVolume(slicer.util.getNode('synthseg'))
+    synthseg=synthseg_ori.copy()
     for i in csf:
         synthseg[synthseg==i]=1
     
@@ -147,7 +148,9 @@ def w():
     # 标记flair连通域
     labels = measure.label(flair, connectivity=1)
     flair_volume_all = Counter(labels[labels>0])
-    flair_volume = [i for i in flair_volume_all.values() if i >= 3]  #大于3个像素
+    flair_volume_all = {k:v for k,v in flair_volume_all.items() if v>=3}  #大于3个像素
+    flair_volume = list(flair_volume_all.values())
+    
     lesions = len(flair_volume)
     total = sum(flair_volume)
     flair_sorted = sorted(flair_volume_all,key=flair_volume_all.get,reverse=True)
