@@ -12,7 +12,7 @@ outputVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLScalarVolumeNode",
 parameters = {}
 parameters["InputVolume"] = volumeNode
 parameters["OutputVolume"] = outputVolumeNode
-parameters["outputPixelSpacing"] = "2,1,1"
+parameters["outputPixelSpacing"] = "1,1,1"
 parameters["interpolationType"] = "nearestNeighbor"
 
 # 运行 Resample Scalar Volume 模块

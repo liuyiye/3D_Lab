@@ -127,6 +127,30 @@ def w():
     60:'Right-VentralDC'
     }
     
+    volumeNode = slicer.util.getNode("lesion_L01")
+    outputVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLScalarVolumeNode", "lesion_L01_111")
+    
+    parameters = {}
+    parameters["InputVolume"] = volumeNode
+    parameters["OutputVolume"] = outputVolumeNode
+    parameters["outputPixelSpacing"] = "1,1,1"
+    parameters["interpolationType"] = "nearestNeighbor"
+    
+    slicer.cli.runSync(slicer.modules.resamplescalarvolume, None, parameters)
+    
+    maskVolumeNode = slicer.util.getNode("mask")
+    referenceVolumeNode = slicer.util.getNode("lesion_L01_111")
+    outputVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLScalarVolumeNode", "mask_111")
+    
+    parameters = {}
+    parameters["inputVolume"] = maskVolumeNode
+    parameters["referenceVolume"] = referenceVolumeNode
+    parameters["outputVolume"] = outputVolumeNode
+    parameters["pixelType"] = "float"
+    parameters["interpolationMode"] = "NearestNeighbor"
+    
+    slicer.cli.runSync(slicer.modules.brainsresample, None, parameters)
+    
     csf=[4,5,14,15,24,43,44]
     synthseg_ori=slicer.util.arrayFromVolume(slicer.util.getNode('synthseg'))
     synthseg=synthseg_ori.copy()
@@ -137,11 +161,11 @@ def w():
     csf_volume=len(synthseg[synthseg==1])
     brain_volume=len(synthseg[synthseg==2])
     
-    mask_node=slicer.util.getNode('mask')
+    mask_node=slicer.util.getNode('mask_111')
     mask=slicer.util.arrayFromVolume(mask_node)
     mask=mask154to21(mask)
     
-    flair_node=slicer.util.getNode('lesion_L01')
+    flair_node=slicer.util.getNode('lesion_L01_111')
     flair=slicer.util.arrayFromVolume(flair_node)
     flair=np.where(flair==0,0,1) #转换matlab得到的lesion_L01，np.where比flair.astype(bool).astype(int)更快
     
