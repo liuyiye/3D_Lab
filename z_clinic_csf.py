@@ -152,14 +152,17 @@ def w():
     slicer.cli.runSync(slicer.modules.brainsresample, None, parameters)
     
     csf=[4,5,14,15,24,43,44]
-    synthseg_ori=slicer.util.arrayFromVolume(slicer.util.getNode('synthseg'))
-    synthseg=synthseg_ori.copy()
+    synthseg_node=slicer.util.getNode('synthseg')
+    synthseg_ori=slicer.util.arrayFromVolume(synthseg_node)
+    synthseg=synthseg_ori.copy() #避免改动该节点的显示
     for i in csf:
         synthseg[synthseg==i]=1
     
     synthseg[synthseg>1]=2
-    csf_volume=len(synthseg[synthseg==1])
-    brain_volume=len(synthseg[synthseg==2])
+    spacing=synthseg_node.GetSpacing()  # 考虑了spacing
+    voxel=np.prod(spacing)
+    csf_volume=len(synthseg[synthseg==1])*voxel
+    brain_volume=len(synthseg[synthseg==2])*voxel
     
     mask_node=slicer.util.getNode('mask_111')
     mask=slicer.util.arrayFromVolume(mask_node)
