@@ -21,13 +21,17 @@ shNode.GetDataNodesInBranch(patientItemID, volumeNodes)
 
 # 过滤体积节点
 volumeNodes = [node for node in volumeNodes if node.IsA("vtkMRMLScalarVolumeNode")]
+num=len(volumeNodes)
+degree=60  # 角度，非弧度
+first=(0-degree/2)
+interval=60/num
 n=0
 # 遍历每个体积节点并执行阈值分割
 for volumeNode in volumeNodes:
     # 创建旋转变换
-    n=n+1
     rotationTransform = vtk.vtkTransform()
-    rotationTransform.RotateY(2*n)
+    rotationTransform.RotateY(first+n*interval)
+    n=n+1
 
     # 将旋转变换应用于体积节点
     volumeNode.ApplyTransform(rotationTransform)
