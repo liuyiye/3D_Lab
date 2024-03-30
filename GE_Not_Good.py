@@ -10,17 +10,11 @@ from pynetdicom import (AE, evt)
 from pynetdicom.sop_class import MRImageStorage
 
 
-# 用于存储已接收序列的CSV文件路径
+# 加载已成功处理序列的记录
 RECEIVED_SERIES_FILE = r'C:\GE_Not_Good\received_series.csv'
-
-
-# 加载已接收序列的记录
-try:
-    with open(RECEIVED_SERIES_FILE, 'r', newline='') as f:
-        reader = csv.reader(f)
-        received_series = [row[3] for row in reader] 
-except FileNotFoundError:
-    received_series = []
+with open(RECEIVED_SERIES_FILE, 'r', newline='') as f:
+    reader = csv.reader(f)
+    received_series = [row[3] for row in reader] 
 
 
 # 设置接收目录
@@ -37,7 +31,7 @@ def handle_store(event):
     series_instance_uid = ds.SeriesInstanceUID
     
     #判断是GE原始图像,并且序列名称不是3D_Lab开头,也没在已传输列表中
-    if ('ORIGINAL' in ds.ImageType                      and
+    if (#'ORIGINAL' in ds.ImageType                     and
         ds.Manufacturer=='GE MEDICAL SYSTEMS'           and
         not ds.SeriesDescription.startswith('3D_Lab')   and
         series_instance_uid not in received_series ):
@@ -100,7 +94,7 @@ def files_len(series_path,n):
         return True
     else:
         old=len(os.listdir(series_path))
-        time.sleep(10)
+        time.sleep(6)
         new=len(os.listdir(series_path))
         if old==new:
             return True
@@ -119,38 +113,39 @@ def check_series():
             if files_len(series_path,ds.ImagesInAcquisition):
                 print(f'Series {series_dir} transfer complete, forwarding...')
                 if t3237(series_path):
-                    t3237w(series_path)
                     now = datetime.now()
                     date_time = now.strftime("%Y-%m-%d %H:%M:%S")
                     series_info = [date_time, ds.PatientID, ds.StudyDate, ds.SeriesInstanceUID]
                     received_series.append(ds.SeriesInstanceUID)
-                    forward_series(series_path)
-                    with open(RECEIVED_SERIES_FILE, 'a', newline='') as f:
-                        writer = csv.writer(f)
-                        writer.writerow(series_info)
-                    complete_path = os.path.join(COMPLETE_DIR, series_dir)
-                    shutil.move(series_path, complete_path)
-                    print(f'all done')
+                    if forward_series(series_path):
+                        with open(RECEIVED_SERIES_FILE, 'a', newline='') as f:
+                            writer = csv.writer(f)
+                            writer.writerow(series_info)
+                        complete_path = os.path.join(COMPLETE_DIR, series_dir)
+                        shutil.move(series_path, complete_path)
+                        print(f'all done')
                 else:
                     discard_path = os.path.join(DISCARD_DIR, series_dir)
                     shutil.move(series_path, discard_path)
-                    print(f'discarded')
+                    print(f't3237 right, discarded')
 
 
-# 转发序列
+# 修正图像标签,转发序列
 def forward_series(series_dir):
     """将完整的序列转发到目标节点"""
     #assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
-    assoc = ae.associate('127.0.0.1', 11116, ae_title=b'RA')
+    ae.connection_timeout=6
+    assoc = ae.associate('127.0.0.1', 11118, ae_title=b'RADIANT')
     if assoc.is_established:
+        t3237w(series_dir)
         for file in os.listdir(series_dir):
             ds = pydicom.dcmread(os.path.join(series_dir, file))
             status = assoc.send_c_store(ds)
-            if status.Status != 0x0000:
-                print(f'C-STORE failed: {status.Status:04x}')
         assoc.release()
+        return True
     else:
         print('Association rejected, unable to send images.')
+        return False
 
 
 def check_series_thread():
@@ -177,4 +172,5 @@ check_thread.start()
 # 启动服务器
 #ae.start_server(('172.20.99.71', 11112), evt_handlers=handlers)
 #ae.start_server(('172.20.99.73', 2209), evt_handlers=handlers)
-ae.start_server(('192.168.22.38', 11112), evt_handlers=handlers)
+#ae.start_server(('192.168.22.38', 11112), evt_handlers=handlers)
+ae.start_server(('192.168.6.106', 11116), evt_handlers=handlers)
