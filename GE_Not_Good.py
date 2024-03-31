@@ -1,4 +1,4 @@
-﻿import os
+import os
 import csv
 import time
 import shutil
@@ -10,7 +10,7 @@ from pynetdicom import (AE, evt)
 from pynetdicom.sop_class import MRImageStorage
 
 
-# 加载已成功处理序列的记录
+# 加载已传输图像的列表
 RECEIVED_SERIES_FILE = r'C:\GE_Not_Good\received_series.csv'
 with open(RECEIVED_SERIES_FILE, 'r', newline='') as f:
     reader = csv.reader(f)
@@ -23,15 +23,14 @@ COMPLETE_DIR    = r'C:\GE_Not_Good\complete'
 DISCARD_DIR     = r'C:\GE_Not_Good\discard'
 
 
-# 处理C-STORE请求
+# 接收图像
 def handle_store(event):
-    """处理C-STORE请求并保存图像到文件夹"""
     ds = event.dataset
     ds.file_meta = event.file_meta
     series_instance_uid = ds.SeriesInstanceUID
     
-    #判断是GE原始图像,并且序列名称不是3D_Lab开头,也没在已传输列表中
-    if (#'ORIGINAL' in ds.ImageType                     and
+    # 判断是GE的图像,并且序列名称不是3D_Lab开头,也没在已传输列表中
+    if (# 'ORIGINAL' in ds.ImageType                    and
         ds.Manufacturer=='GE MEDICAL SYSTEMS'           and
         not ds.SeriesDescription.startswith('3D_Lab')   and
         series_instance_uid not in received_series ):
@@ -53,11 +52,11 @@ def handle_store(event):
         return 0x0000
 
 
-#图像不能重建,返回True,函数缺省返回值为None
+# 如果图像不能重建,返回True,函数缺省返回值为None
 def t3237(series_dir):
     files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)]
     orientation=[pydicom.dcmread(file)[0x00200037].value for file in files]
-    if len(set(map(tuple,orientation)))>1:   #map生成器表达式只能使用一次
+    if len(set(map(tuple,orientation)))>1:   # map生成器表达式只能使用一次
         return True
     files.sort(key=lambda x: pydicom.dcmread(x)[0x00200032].value[2])
     position=[pydicom.dcmread(file)[0x00200032].value for file in files]
@@ -130,12 +129,10 @@ def check_series():
                     print(f't3237 right, discarded')
 
 
-# 修正图像标签,转发序列
+# 修正图像标签,转发图像序列
 def forward_series(series_dir):
-    """将完整的序列转发到目标节点"""
-    #assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
-    ae.connection_timeout=6
-    assoc = ae.associate('127.0.0.1', 11118, ae_title=b'RADIANT')
+    ae.connection_timeout=60
+    assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
     if assoc.is_established:
         t3237w(series_dir)
         for file in os.listdir(series_dir):
@@ -150,18 +147,8 @@ def forward_series(series_dir):
 
 def check_series_thread():
     while True:
-        time.sleep(2)
+        time.sleep(6)
         check_series()
-
-
-# 创建应用实体
-handlers = [(evt.EVT_C_STORE, handle_store)]
-ae = AE(ae_title=b'GE_Not_Good')
-#ae = AE(ae_title=b'PVDS1')
-ae.add_supported_context(MRImageStorage)
-ae.add_supported_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
-ae.add_requested_context(MRImageStorage)
-ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
 
 
 # 创建检查线程
@@ -169,8 +156,15 @@ check_thread = threading.Thread(target=check_series_thread)
 check_thread.start()
 
 
+# 创建应用实体
+handlers = [(evt.EVT_C_STORE, handle_store)]
+ae = AE(ae_title=b'GE_Not_Good')
+ae.add_supported_context(MRImageStorage)
+ae.add_supported_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
+ae.add_requested_context(MRImageStorage)
+ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
+
+
 # 启动服务器
-#ae.start_server(('172.20.99.71', 11112), evt_handlers=handlers)
-#ae.start_server(('172.20.99.73', 2209), evt_handlers=handlers)
-#ae.start_server(('192.168.22.38', 11112), evt_handlers=handlers)
-ae.start_server(('192.168.6.106', 11116), evt_handlers=handlers)
+ae.start_server(('172.20.99.71', 11112), evt_handlers=handlers)
+
