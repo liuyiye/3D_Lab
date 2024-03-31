@@ -69,9 +69,16 @@ def t3237(series_dir):
 
 def t3237w(series_dir):
     files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)]
-    files.sort(key=lambda x: pydicom.dcmread(x)[0x00200032].value[2])
+    
+    f2013 = files.copy()
+    f2013.sort(key=lambda x: pydicom.dcmread(x)[0x00200013].value)
+    firstImg = pydicom.dcmread(f2013[0])[0x00200032].value[2]
+    lastImg = pydicom.dcmread(f2013[-1])[0x00200032].value[2]
+    order = firstImg > lastImg
+    
+    files.sort(key=lambda x: pydicom.dcmread(x)[0x00200032].value[2],reverse=order)
     position=[pydicom.dcmread(file)[0x00200032].value for file in files]
-    orientation=[pydicom.dcmread(file)[0x00200037].value for file in files]
+    orientation=pydicom.dcmread(files[0])[0x00200037].value
     a=np.array(position)
     a=np.round(np.linspace(a[0],a[-1],a[:,0].size),6)
     n=0
@@ -83,7 +90,7 @@ def t3237w(series_dir):
         ds[0x0020000e].value=siuid
         ds[0x00200013].value=n+1
         ds[0x00200032].value=list(a[n])
-        ds[0x00200037].value=orientation[0]
+        ds[0x00200037].value=orientation
         n=n+1
         ds.save_as(file)
 
