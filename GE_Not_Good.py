@@ -7,7 +7,7 @@ import threading
 import numpy as np
 from datetime import datetime
 from pynetdicom import (AE, evt)
-from pynetdicom.sop_class import MRImageStorage
+from pynetdicom.sop_class import MRImageStorage,PatientRootQueryRetrieveInformationModelFind
 
 
 # 加载已传输图像的列表
@@ -95,17 +95,33 @@ def t3237w(series_dir):
         ds.save_as(file)
 
 
-def files_len(series_path,n):
-    if len(os.listdir(series_path)) == n:
-        return True
+def image_count_in_series(PID,SUID):
+    ds = pydicom.Dataset()
+    ds.PatientID = PID
+    ds.SeriesInstanceUID = SUID
+    ds.QueryRetrieveLevel = "IMAGE"
+    
+    ae = AE(ae_title=b'C3D')
+    ae.add_requested_context(PatientRootQueryRetrieveInformationModelFind)
+    ae.connection_timeout=60
+    assoc = ae.associate('192.168.21.16',2002,ae_title=b'SDM')
+    image_count = -1
+    if assoc.is_established:
+        responses = assoc.send_c_find(ds, PatientRootQueryRetrieveInformationModelFind)
+        for (status, ds) in responses:
+            if status:
+                image_count += 1
+            else:
+                print('Connection timed out, was aborted or received invalid response')
+        
+        # Release the association
+        print('image_count_in_series:',image_count)
+        return(image_count)
+        assoc.release()
     else:
-        old=len(os.listdir(series_path))
-        time.sleep(6)
-        new=len(os.listdir(series_path))
-        if old==new:
-            return True
-        else:
-            return False
+        print('Association rejected, aborted or never connected')
+    
+    return(image_count)
 
 
 # 检查序列是否完整
@@ -116,7 +132,7 @@ def check_series():
         series_files = os.listdir(series_path)
         if series_files:
             ds = pydicom.dcmread(os.path.join(series_path, series_files[0]))
-            if files_len(series_path,ds.ImagesInAcquisition):
+            if len(series_files)==ds.ImagesInAcquisition or len(series_files)==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID):
                 print(f'Series {series_dir} transfer complete, forwarding...')
                 if t3237(series_path):
                     now = datetime.now()
