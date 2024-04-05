@@ -1,10 +1,4 @@
-import os
-import csv
-import time
-import shutil
-import pydicom
-import threading
-import numpy as np
+import os,csv,time,shutil,pydicom,logging,threading,numpy as np
 from datetime import datetime
 from pynetdicom import (AE, evt)
 from pynetdicom.sop_class import MRImageStorage,PatientRootQueryRetrieveInformationModelFind
@@ -17,10 +11,14 @@ with open(RECEIVED_SERIES_FILE, 'r', newline='') as f:
     received_series = [row[3] for row in reader] 
 
 
-# 设置接收目录
+# 设置接收目录及日志文件
 STORAGE_DIR     = r'C:\GE_Not_Good\storage'
 COMPLETE_DIR    = r'C:\GE_Not_Good\complete'
 DISCARD_DIR     = r'C:\GE_Not_Good\discard'
+logging.basicConfig(
+    filename=r'C:\GE_Not_Good\GE_Not_Good.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 # 接收图像
@@ -39,7 +37,7 @@ def handle_store(event):
         os.makedirs(series_dir, exist_ok=True)
         file_path = os.path.join(series_dir, f'{ds.SOPInstanceUID}.dcm')
         ds.save_as(file_path, write_like_original=False)
-        print(f'Received image {ds.SOPInstanceUID}')
+        logging.info(f'Received image {ds.SOPInstanceUID}')
         return 0x0000
     
     else:
@@ -48,7 +46,7 @@ def handle_store(event):
         os.makedirs(discard_dir, exist_ok=True)
         file_path = os.path.join(discard_dir, f'{ds.SOPInstanceUID}.dcm')
         ds.save_as(file_path, write_like_original=False)
-        print(f'discarding image {ds.SOPInstanceUID}')
+        logging.warning(f'discarding image {ds.SOPInstanceUID}')
         return 0x0000
 
 
@@ -112,14 +110,14 @@ def image_count_in_series(PID,SUID):
             if status:
                 image_count += 1
             else:
-                print('Connection timed out, was aborted or received invalid response')
+                logging.error('Connection timed out, was aborted or received invalid response')
         
         # Release the association
-        print('image_count_in_series:',image_count)
+        logging.info(f'image_count_in_series: {image_count}')
         return(image_count)
         assoc.release()
     else:
-        print('Association rejected, aborted or never connected')
+        logging.error('Association rejected, aborted or never connected')
 
 
 # 检查序列是否完整
@@ -132,6 +130,7 @@ def check_series():
             ds = pydicom.dcmread(os.path.join(series_path, series_files[0]))
             if len(series_files)==ds.ImagesInAcquisition or len(series_files)==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID):
                 print(f'Series {series_dir} transfer complete, forwarding...')
+                logging.info(f'Series {series_dir} transfer complete, forwarding...')
                 if t3237(series_path):
                     now = datetime.now()
                     date_time = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -144,10 +143,11 @@ def check_series():
                         complete_path = os.path.join(COMPLETE_DIR, series_dir)
                         shutil.move(series_path, complete_path)
                         print(f'all done')
+                        logging.info(f'all done')
                 else:
                     discard_path = os.path.join(DISCARD_DIR, series_dir)
                     shutil.move(series_path, discard_path)
-                    print(f't3237 right, discarded')
+                    logging.warning(f't3237 right, discarded')
 
 
 # 修正图像标签,转发图像序列
@@ -162,7 +162,7 @@ def forward_series(series_dir):
         assoc.release()
         return True
     else:
-        print('Association rejected, unable to send images.')
+        logging.error('Association rejected, unable to send images.')
         return False
 
 
