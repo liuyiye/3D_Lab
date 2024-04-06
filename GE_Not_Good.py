@@ -14,10 +14,9 @@ with open(RECEIVED_SERIES_FILE, 'r', newline='') as f:
 # 设置接收目录及日志文件
 STORAGE_DIR     = r'C:\GE_Not_Good\storage'
 COMPLETE_DIR    = r'C:\GE_Not_Good\complete'
-DISCARD_DIR     = r'C:\GE_Not_Good\discard'
 logging.basicConfig(
     filename=r'C:\GE_Not_Good\GE_Not_Good.log',
-    level=logging.INFO,
+    level=logging.WARNING,
     format='%(asctime)s - %(levelname)s - %(message)s')
 
 
@@ -37,16 +36,10 @@ def handle_store(event):
         os.makedirs(series_dir, exist_ok=True)
         file_path = os.path.join(series_dir, f'{ds.SOPInstanceUID}.dcm')
         ds.save_as(file_path, write_like_original=False)
-        logging.info(f'Received image {ds.SOPInstanceUID}')
+        print(f'Received image {ds.SOPInstanceUID}')
         return 0x0000
-    
     else:
-        # 重复序列或者不符合要求,存入废弃文件夹
-        discard_dir = os.path.join(DISCARD_DIR, series_instance_uid)
-        os.makedirs(discard_dir, exist_ok=True)
-        file_path = os.path.join(discard_dir, f'{ds.SOPInstanceUID}.dcm')
-        ds.save_as(file_path, write_like_original=False)
-        logging.warning(f'discarding image {ds.SOPInstanceUID}')
+        logging.warning(f'discarding image {ds.PatientID,ds.StudyDate,ds.SeriesDescription,ds.SOPInstanceUID}')
         return 0x0000
 
 
@@ -113,7 +106,7 @@ def image_count_in_series(PID,SUID):
                 logging.error('Connection timed out, was aborted or received invalid response')
         
         # Release the association
-        logging.info(f'image_count_in_series: {image_count}')
+        logging.warning(f'image_count_in_series: {image_count}')
         return(image_count)
         assoc.release()
     else:
@@ -129,8 +122,7 @@ def check_series():
         if series_files:
             ds = pydicom.dcmread(os.path.join(series_path, series_files[0]))
             if len(series_files)==ds.ImagesInAcquisition or len(series_files)==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID):
-                print(f'Series {series_dir} transfer complete, forwarding...')
-                logging.info(f'Series {series_dir} transfer complete, forwarding...')
+                logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesDescription} transfer complete, forwarding...')
                 if t3237(series_path):
                     now = datetime.now()
                     date_time = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -142,12 +134,10 @@ def check_series():
                             writer.writerow(series_info)
                         complete_path = os.path.join(COMPLETE_DIR, series_dir)
                         shutil.move(series_path, complete_path)
-                        print(f'all done')
-                        logging.info(f'all done')
+                        logging.warning(f'all done')
                 else:
-                    discard_path = os.path.join(DISCARD_DIR, series_dir)
-                    shutil.move(series_path, discard_path)
-                    logging.warning(f't3237 right, discarded')
+                    shutil.rmtree(series_path)
+                    logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesDescription} t3237 right, removed')
 
 
 # 修正图像标签,转发图像序列
