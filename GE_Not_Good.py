@@ -121,7 +121,9 @@ def check_series():
         series_files = os.listdir(series_path)
         if series_files:
             ds = pydicom.dcmread(os.path.join(series_path, series_files[0]))
-            if len(series_files)==ds.ImagesInAcquisition or len(series_files)==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID):
+            try:images = ds.ImagesInAcquisition # 有些序列没有这个tag
+            except:images = 0
+            if len(series_files)==images or len(series_files)==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID):
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesDescription} transfer complete, forwarding...')
                 if t3237(series_path):
                     now = datetime.now()
@@ -135,6 +137,7 @@ def check_series():
                         complete_path = os.path.join(COMPLETE_DIR, series_dir)
                         shutil.move(series_path, complete_path)
                         logging.warning(f'all done')
+                        print(f'all done')
                 else:
                     shutil.rmtree(series_path)
                     logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesDescription} t3237 right, removed')
@@ -158,7 +161,7 @@ def forward_series(series_dir):
 
 def check_series_thread():
     while True:
-        time.sleep(6)
+        time.sleep(10)
         check_series()
 
 
@@ -178,4 +181,5 @@ ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
 
 # 启动服务器
 ae.start_server(('172.20.99.71', 11112), evt_handlers=handlers)
+
 
