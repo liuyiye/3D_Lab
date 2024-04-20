@@ -123,7 +123,8 @@ def check_series():
             ds = pydicom.dcmread(os.path.join(series_path, series_files[0]))
             try:images = ds.ImagesInAcquisition # 有些序列没有这个tag
             except:images = 0
-            if len(series_files)==images or len(series_files)==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID):
+            n=len(series_files)
+            if n>60 and (n==images or n==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID)):
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesDescription} transfer complete, forwarding...')
                 if t3237(series_path):
                     now = datetime.now()
@@ -181,5 +182,4 @@ ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
 
 # 启动服务器
 ae.start_server(('172.20.99.71', 11112), evt_handlers=handlers)
-
 
