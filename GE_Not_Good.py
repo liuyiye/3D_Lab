@@ -54,7 +54,7 @@ def t3237(series_dir):
     a=np.array(position)
     b=np.diff(a,axis=0)
     c=np.diff(b,axis=0)
-    if all((c>0.001).reshape(-1)):
+    if any((c>0.0011).reshape(-1)):
         return True
 
 
