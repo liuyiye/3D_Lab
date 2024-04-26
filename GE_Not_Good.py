@@ -122,8 +122,8 @@ def check_series():
                     now = datetime.now()
                     date_time = now.strftime("%Y-%m-%d %H:%M:%S")
                     series_info = [date_time, ds.PatientID, ds.StudyDate, ds.SeriesInstanceUID]
-                    received_series.append(ds.SeriesInstanceUID)
                     if forward_series(series_path):
+                        received_series.append(ds.SeriesInstanceUID)
                         with open(RECEIVED_SERIES_FILE, 'a', newline='') as f:
                             writer = csv.writer(f)
                             writer.writerow(series_info)
@@ -131,6 +131,8 @@ def check_series():
                         shutil.move(series_path, complete_path)
                         logging.warning(f'all done')
                         print(f'all done')
+                        send_to_new_pacs(complete_path)
+                        logging.warning(f'new pacs done')
                 else:
                     shutil.rmtree(series_path)
                     logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesDescription} t3237 right, removed')
@@ -150,6 +152,16 @@ def forward_series(series_dir):
     else:
         logging.error('Association rejected, unable to send images.')
         return False
+
+
+def send_to_new_pacs(series_dir):
+    ae.connection_timeout=60
+    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
+    if assoc.is_established:
+        for file in os.listdir(series_dir):
+            ds = pydicom.dcmread(os.path.join(series_dir, file))
+            status = assoc.send_c_store(ds)
+        assoc.release()
 
 
 def check_series_thread():
