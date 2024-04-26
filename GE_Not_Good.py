@@ -99,8 +99,8 @@ def image_count_in_series(PID,SUID):
         
         # Release the association
         logging.warning(f'image_count_in_series: {image_count}')
-        return(image_count)
         assoc.release()
+        return(image_count)
     else:
         logging.error('Association rejected, aborted or never connected')
 
@@ -118,12 +118,12 @@ def check_series():
             n=len(series_files)
             if n>60 and (n==images or n==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID)):
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesDescription} transfer complete, forwarding...')
-                if t3237(series_path):
+                if t3237(series_path) or ds.SeriesDescription.startswith('3D_Lab'):
                     now = datetime.now()
                     date_time = now.strftime("%Y-%m-%d %H:%M:%S")
                     series_info = [date_time, ds.PatientID, ds.StudyDate, ds.SeriesInstanceUID]
+                    received_series.append(ds.SeriesInstanceUID)
                     if forward_series(series_path):
-                        received_series.append(ds.SeriesInstanceUID)
                         with open(RECEIVED_SERIES_FILE, 'a', newline='') as f:
                             writer = csv.writer(f)
                             writer.writerow(series_info)
