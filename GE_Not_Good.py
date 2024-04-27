@@ -49,7 +49,15 @@ def t3237(series_dir):
     orientation=[pydicom.dcmread(file)[0x00200037].value for file in files]
     if len(set(map(tuple,orientation)))>1:   # map生成器表达式只能使用一次
         return True
-    files.sort(key=lambda x: pydicom.dcmread(x)[0x00200032].value[2])
+    
+    #判断哪个轴的差值最大，并按照该轴来排序
+    position=[pydicom.dcmread(file)[0x00200032].value for file in files]
+    a=np.array(position)
+    b=np.diff(a,axis=0)
+    c=list(abs(b[0]))
+    i=c.index(max(c))
+    
+    files.sort(key=lambda x: pydicom.dcmread(x)[0x00200032].value[i])
     position=[pydicom.dcmread(file)[0x00200032].value for file in files]
     a=np.array(position)
     b=np.diff(a,axis=0)
@@ -60,7 +68,22 @@ def t3237(series_dir):
 
 def t3237w(series_dir):
     files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)]
-    files.sort(key=lambda x: pydicom.dcmread(x)[0x00200013].value)
+    
+    #判断哪个轴的差值最大，并按照该轴来排序
+    position=[pydicom.dcmread(file)[0x00200032].value for file in files]
+    a=np.array(position)
+    b=np.diff(a,axis=0)
+    c=list(abs(b[0]))
+    i=c.index(max(c))
+    
+    #根据2013标签判断图像的原始顺序
+    f2013 = files.copy()
+    f2013.sort(key=lambda x: pydicom.dcmread(x)[0x00200013].value)
+    firstImg = pydicom.dcmread(f2013[0])[0x00200032].value[i]
+    lastImg = pydicom.dcmread(f2013[-1])[0x00200032].value[i]
+    order = firstImg > lastImg
+    
+    files.sort(key=lambda x: pydicom.dcmread(x)[0x00200032].value[i],reverse=order)
     position=[pydicom.dcmread(file)[0x00200032].value for file in files]
     orientation=pydicom.dcmread(files[0])[0x00200037].value
     a=np.array(position)
@@ -72,6 +95,7 @@ def t3237w(series_dir):
         ds[0x00080018].value=pydicom.uid.generate_uid()
         ds[0x0008103e].value='3D_Lab_'+ds[0x0008103e].value
         ds[0x0020000e].value=siuid
+        ds[0x00200013].value=n+1
         ds[0x00200032].value=list(a[n])
         ds[0x00200037].value=orientation
         n=n+1
