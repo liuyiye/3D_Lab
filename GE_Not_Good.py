@@ -57,8 +57,7 @@ def t3237(series_dir):
     c=list(abs(b[0]))
     i=c.index(max(c))
     
-    files.sort(key=lambda x: pydicom.dcmread(x)[0x00200032].value[i])
-    position=[pydicom.dcmread(file)[0x00200032].value for file in files]
+    position.sort(key=lambda x:x[i])
     a=np.array(position)
     b=np.diff(a,axis=0)
     c=np.diff(b,axis=0)
