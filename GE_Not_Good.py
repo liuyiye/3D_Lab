@@ -47,11 +47,13 @@ def handle_store(event):
 def t3237(series_dir):
     files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)]
     orientation=[pydicom.dcmread(file)[0x00200037].value for file in files]
+    if orientation[0] is None:return
     if len(set(map(tuple,orientation)))>1:   # map生成器表达式只能使用一次
         return True
     
     #判断哪个轴的差值最大，并按照该轴来排序
     position=[pydicom.dcmread(file)[0x00200032].value for file in files]
+    if position[0] is None:return
     a=np.array(position)
     b=np.diff(a,axis=0)
     c=list(abs(b[0]))
@@ -158,7 +160,7 @@ def check_series():
                         logging.warning(f'new pacs done')
                 else:
                     shutil.rmtree(series_path)
-                    logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesDescription} t3237 right, removed')
+                    logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesDescription} t3237 right or None, removed')
 
 
 # 修正图像标签,转发图像序列
