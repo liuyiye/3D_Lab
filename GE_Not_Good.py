@@ -27,8 +27,7 @@ def handle_store(event):
     series_instance_uid = ds.SeriesInstanceUID
     
     # 判断是GE的图像,并且序列名称不是3D_Lab开头,也没在已传输列表中
-    if (# 'ORIGINAL' in ds.ImageType                    and
-        ds.Manufacturer=='GE MEDICAL SYSTEMS'           and
+    if (ds.Manufacturer=='GE MEDICAL SYSTEMS'           and
         not ds.SeriesDescription.startswith('3D_Lab')   and
         series_instance_uid not in received_series ):
         
@@ -36,7 +35,6 @@ def handle_store(event):
         os.makedirs(series_dir, exist_ok=True)
         file_path = os.path.join(series_dir, f'{ds.SOPInstanceUID}.dcm')
         ds.save_as(file_path, write_like_original=False)
-        print(f'Received image {ds.SOPInstanceUID}')
         return 0x0000
     else:
         logging.warning(f'discarding image {ds.PatientID,ds.StudyDate,ds.SeriesDescription,ds.SOPInstanceUID}')
@@ -142,7 +140,7 @@ def check_series():
             except:images = 0
             n=len(series_files)
             if n>60 and (n==images or n==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID)):
-                logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesDescription} transfer complete, forwarding...')
+                logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} transfer complete, forwarding...')
                 if t3237(series_path) or ds.SeriesDescription.startswith('3D_Lab'):
                     now = datetime.now()
                     date_time = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -155,12 +153,12 @@ def check_series():
                         complete_path = os.path.join(COMPLETE_DIR, series_dir)
                         shutil.move(series_path, complete_path)
                         logging.warning(f'all done')
-                        print(f'all done')
+                        print(f'{date_time} all done')
                         send_to_new_pacs(complete_path)
                         logging.warning(f'new pacs done')
                 else:
                     shutil.rmtree(series_path)
-                    logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesDescription} t3237 right or None, removed')
+                    logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} t3237 right or None, removed')
 
 
 # 修正图像标签,转发图像序列
