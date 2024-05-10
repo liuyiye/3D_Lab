@@ -153,7 +153,7 @@ def check_series():
                         complete_path = os.path.join(COMPLETE_DIR, series_dir)
                         shutil.move(series_path, complete_path)
                         logging.warning(f'all done')
-                        print(f'{date_time} all done')
+                        #print(f'{date_time} all done')
                         send_to_new_pacs(complete_path)
                         logging.warning(f'new pacs done')
                 else:
