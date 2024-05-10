@@ -13,7 +13,7 @@ with open(RECEIVED_SERIES_FILE, 'r', newline='') as f:
 
 # 设置接收目录及日志文件
 STORAGE_DIR     = '/home/edu/GE_Not_Good/storage'
-COMPLETE_DIR    = 'home/edu/GE_Not_Good/complete'
+COMPLETE_DIR    = '/home/edu/GE_Not_Good/complete'
 logging.basicConfig(
     filename='/home/edu/GE_Not_Good/GE_Not_Good.log',
     level=logging.WARNING,
