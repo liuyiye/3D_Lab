@@ -1,0 +1,27 @@
+1.使用文本编辑器创建一个systemd 服务文件
+sudo nano /etc/systemd/system/GE_Not_Good.service
+
+[Unit]
+Description=GE_Not_Good
+After=network-online.target
+
+[Service]
+ExecStart=/bin/bash -c 'export PYTHONPATH=/home/edu/.local/lib/python3.10/site-packages && /usr/bin/python3 /home/edu/GE_Not_Good/GE_Not_Good_Linux.py'
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
+2.重新载入 systemd 以使新的服务文件生效
+sudo systemctl daemon-reload
+
+3.启动服务并设置开机自启动
+sudo systemctl start GE_Not_Good.service
+sudo systemctl enable GE_Not_Good.service
+sudo systemctl status GE_Not_Good.service
+
+4.查看服务的输出日志
+sudo journalctl -u GE_Not_Good.service
+
+5.实时查看输出
+sudo journalctl -f -u GE_Not_Good.service
