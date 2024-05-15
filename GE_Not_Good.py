@@ -1,4 +1,4 @@
-import os,csv,time,shutil,pydicom,logging,threading,numpy as np
+import os,csv,time,shutil,pydicom,logging,numpy as np
 from datetime import datetime
 from pynetdicom import (AE, evt)
 from pynetdicom.sop_class import MRImageStorage,PatientRootQueryRetrieveInformationModelFind
@@ -119,8 +119,6 @@ def image_count_in_series(PID,SUID):
                 image_count += 1
             else:
                 logging.error('Connection timed out, was aborted or received invalid response')
-        
-        # Release the association
         logging.warning(f'image_count_in_series: {image_count}')
         assoc.release()
         return(image_count)
@@ -139,7 +137,7 @@ def check_series():
             try:images = ds.ImagesInAcquisition # 有些序列没有这个tag
             except:images = 0
             n=len(series_files)
-            if n>60 and (n==images or n==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID)):
+            if n>19 and (n==images or n==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID)):
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} transfer complete, forwarding...')
                 if t3237(series_path) or ds.SeriesDescription.startswith('3D_Lab'):
                     now = datetime.now()
@@ -187,17 +185,6 @@ def send_to_new_pacs(series_dir):
         assoc.release()
 
 
-def check_series_thread():
-    while True:
-        time.sleep(10)
-        check_series()
-
-
-# 创建检查线程
-check_thread = threading.Thread(target=check_series_thread)
-check_thread.start()
-
-
 # 创建应用实体
 handlers = [(evt.EVT_C_STORE, handle_store)]
 ae = AE(ae_title=b'GE_Not_Good')
@@ -208,5 +195,10 @@ ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
 
 
 # 启动服务器
-ae.start_server(('172.20.99.71', 11112), evt_handlers=handlers)
+ae.start_server(('', 11112), block=False,evt_handlers=handlers)
+
+
+while True:
+    time.sleep(10)
+    check_series()
 
