@@ -137,7 +137,7 @@ def check_series():
             try:images = ds.ImagesInAcquisition # 有些序列没有这个tag
             except:images = 0
             n=len(series_files)
-            if n>19 and (n==images or n==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID)):
+            if n>0 and (n==images or n==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID)):
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} transfer complete, forwarding...')
                 if t3237(series_path) or ds.SeriesDescription.startswith('3D_Lab'):
                     now = datetime.now()
@@ -195,7 +195,7 @@ ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
 
 
 # 启动服务器
-ae.start_server(('', 11112), block=False,evt_handlers=handlers)
+ae.start_server(('', 11112), block=False, evt_handlers=handlers)
 
 
 while True:
