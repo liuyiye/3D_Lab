@@ -2,14 +2,12 @@
 import os
 import pydicom
 import numpy as np
-import matplotlib.pyplot as plt
+import colorsys
 
 dicom_folder = r'C:\0'
 dst_folder = r'C:\1'
 if not os.path.exists(dst_folder):
     os.makedirs(dst_folder)
-
-cmap = plt.get_cmap('jet')
 
 for root, dirs, files in os.walk(dicom_folder):
     for file in files:
@@ -22,7 +20,11 @@ for root, dirs, files in os.walk(dicom_folder):
         if is_dicom:
             pixel_data = ds.pixel_array
             normalized_pixel_data = (pixel_data - np.min(pixel_data)) / (np.max(pixel_data) - np.min(pixel_data))
-            colored_pixel_data = cmap(normalized_pixel_data)[:, :, :3]  # 只取RGB三个通道
+            colored_pixel_data = np.zeros((ds.Rows, ds.Columns, 3), dtype=np.float64)
+            for row in range(ds.Rows):
+                for col in range(ds.Columns):
+                    hue = normalized_pixel_data[row, col]
+                    colored_pixel_data[row, col, :] = colorsys.hsv_to_rgb(hue, 1.0, 1.0)
             colored_pixel_data = (colored_pixel_data * 255).astype(np.uint8) # 将颜色数据转换为8位整数格式
             ds.PixelData = colored_pixel_data.tobytes()
             ds.SamplesPerPixel = 3
