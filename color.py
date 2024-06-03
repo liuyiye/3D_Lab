@@ -3,33 +3,43 @@ import matplotlib.pyplot as plt
 import pydicom,logging,numpy as np
 
 logging.basicConfig(
-    filename=r'C:\Color\color.log',
+    filename='/home/edu/Color/color.log',
     level=logging.WARNING,
     format='%(asctime)s - %(levelname)s - %(message)s')
 
-cmap = plt.get_cmap('jet')
+SERIES_UID_FILE = '/home/edu/Color/received_series.txt'
+SOP_UID_FILE = '/home/edu/Color/received_sop.txt'
 
+def get_series_uid_value(uid):
+    with open(SERIES_UID_FILE, 'r+') as f:
+        for line in f:
+            key, value = line.strip().split(':')
+            if key == uid:
+                return value
+        
+        new_value = pydicom.uid.generate_uid()
+        f.write(f'{uid}:{new_value}\n')
+        return new_value
+
+def exist_sop(uid):
+    with open(SOP_UID_FILE, 'r+') as f:
+        uids = f.read().splitlines()
+        if uid in uids:
+            return True
+        else:
+            f.write(f'{uid}\n')
+
+cmap = plt.get_cmap('jet')
 def rgb(ds):
+    logging.warning(f'cmap_jet {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription}')
     pixel_data = ds.pixel_array
-    if 'RedPaletteColorLookupTableData' in ds:
-        logging.warning(f'Palette {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription}')
-        width = ds.Rows
-        height = ds.Columns
-        red_clut = ds.RedPaletteColorLookupTableData
-        green_clut = ds.GreenPaletteColorLookupTableData
-        blue_clut = ds.BluePaletteColorLookupTableData
-        rgb_data = np.zeros((height, width, 3), dtype=np.uint8)
-        for i in range(height):
-            for j in range(width):
-                index = pixel_data[i, j]
-                rgb_data[i, j, 0] = red_clut[index]
-                rgb_data[i, j, 1] = green_clut[index]
-                rgb_data[i, j, 2] = blue_clut[index]
-    else:
-        logging.warning(f'cmap {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription}')
-        normalized_pixel_data = (pixel_data - np.min(pixel_data)) / (np.max(pixel_data) - np.min(pixel_data))
-        rgb_data = cmap(normalized_pixel_data)[:, :, :3]
-        rgb_data = (rgb_data * 255).astype(np.uint8)
+    lower=np.percentile(pixel_data,1)
+    upper=np.percentile(pixel_data,99)
+    if lower==upper:
+        upper+=1
+    normalized_pixel_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
+    rgb_data = cmap(normalized_pixel_data)[:, :, :3]
+    rgb_data = (rgb_data * 255).astype(np.uint8)
     
     ds.PhotometricInterpretation = 'RGB'
     ds.SamplesPerPixel = 3
@@ -40,17 +50,11 @@ def rgb(ds):
     ds.PixelData = rgb_data.tobytes()
     ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
     
-    ds[0x00080018].value = pydicom.uid.generate_uid()
-    ds[0x0008103e].value = '3D_Lab_'+ds[0x0008103e].value
+    ds.SOPInstanceUID = pydicom.uid.generate_uid()
+    ds.SeriesDescription = '3D_Lab_'+ds.SeriesDescription
+    ds.SeriesInstanceUID = get_series_uid_value(ds.SeriesInstanceUID)
     
-    uid=ds[0x0020000e].value
-    root = uid[:-1]
-    last_digit = int(uid[-1])
-    new_last_digit = (last_digit + 2) % 10
-    modified_uid = root + str(new_last_digit)
-    ds[0x0020000e].value = modified_uid
-    
-    assoc = ae.associate('172.19.83.228',4006,ae_title=b'AE_TITLE')
+    assoc = ae.associate('192.168.21.16',2002,ae_title=b'SDM')
     if assoc.is_established:
         status = assoc.send_c_store(ds)
         assoc.release()
@@ -59,10 +63,10 @@ def rgb(ds):
 def handle_store(event):
     ds = event.dataset
     ds.file_meta = event.file_meta
-    if ds.PhotometricInterpretation == 'RGB':
-        logging.warning(f'discard {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription}')
-    else:
+    if ds.PhotometricInterpretation.startswith('MONO') and not exist_sop(ds.SOPInstanceUID):
         rgb(ds)
+    else:
+        logging.warning(f'discard {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription}')
     return 0x0000
 
 handlers = [(evt.EVT_C_STORE, handle_store)]
@@ -72,4 +76,5 @@ for context in StoragePresentationContexts:
     ae.add_supported_context(context.abstract_syntax)
     ae.add_requested_context(context.abstract_syntax)
 
-ae.start_server(('', 11112), block=False, evt_handlers=handlers)
+ae.start_server(('', 11113), block=True, evt_handlers=handlers)
+
