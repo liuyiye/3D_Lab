@@ -1,6 +1,6 @@
 from pynetdicom import AE, evt, StoragePresentationContexts
 import matplotlib.pyplot as plt
-import pydicom,logging,numpy as np
+import pydicom,logging,cv2,numpy as np
 
 logging.basicConfig(
     filename='/home/edu/Color/color.log',
@@ -33,6 +33,8 @@ cmap = plt.get_cmap('jet')
 def rgb(ds):
     logging.warning(f'cmap_jet {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription}')
     pixel_data = ds.pixel_array
+    if min(ds.Rows,ds.Columns) < 256:
+    	pixel_data = cv2.medianBlur(pixel_data,3)
     lower=np.percentile(pixel_data,1)
     upper=np.percentile(pixel_data,99)
     if lower==upper:
