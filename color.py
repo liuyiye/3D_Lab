@@ -1,6 +1,6 @@
 from pynetdicom import AE, evt, StoragePresentationContexts
-import matplotlib.pyplot as plt
-import pydicom,logging,cv2,numpy as np
+import pydicom,logging,numpy as np
+#import cv2
 
 logging.basicConfig(
     filename='/home/edu/Color/color.log',
@@ -9,6 +9,9 @@ logging.basicConfig(
 
 SERIES_UID_FILE = '/home/edu/Color/received_series.txt'
 SOP_UID_FILE = '/home/edu/Color/received_sop.txt'
+COLOR_MAP = '/home/edu/Color/color_map.csv'
+
+jet = np.genfromtxt(COLOR_MAP, delimiter=',', skip_header=1)
 
 def get_series_uid_value(uid):
     with open(SERIES_UID_FILE, 'r+') as f:
@@ -29,20 +32,29 @@ def exist_sop(uid):
         else:
             f.write(f'{uid}\n')
 
-cmap = plt.get_cmap('jet')
 def rgb(ds):
-    logging.warning(f'cmap_jet {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription}')
+    logging.warning(f'jet {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription}')
     pixel_data = ds.pixel_array
-    if min(ds.Rows,ds.Columns) < 256:
-    	pixel_data = cv2.medianBlur(pixel_data,3)
-    lower=np.percentile(pixel_data,1)
-    upper=np.percentile(pixel_data,99)
+    i,j = pixel_data.shape
+    if ds.Modality == 'CT':
+        pixel_data = pixel_data + ds.RescaleIntercept
+        lower=max(ds.WindowCenter-ds.WindowWidth/2,np.percentile(pixel_data,1))
+        upper=min(ds.WindowCenter+ds.WindowWidth/2,np.percentile(pixel_data,99))
+    else:
+    	lower=np.percentile(pixel_data,1)
+    	upper=np.percentile(pixel_data,99)
     if lower==upper:
         upper+=1
     normalized_pixel_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
-    rgb_data = cmap(normalized_pixel_data)[:, :, :3]
-    rgb_data = (rgb_data * 255).astype(np.uint8)
-    
+    grey_data = normalized_pixel_data*255
+    rgb_data = np.zeros((i,j,3), dtype=np.uint8)
+    for y in range(i):
+        for x in range(j):
+            grey_value = grey_data[y, x]
+            rgb_value = jet[int(grey_value)]
+            rgb_data[y, x] = rgb_value[1:]
+    if 'RescaleIntercept' in ds:
+        ds.RescaleIntercept = 0
     ds.PhotometricInterpretation = 'RGB'
     ds.SamplesPerPixel = 3
     ds.BitsAllocated = 8
@@ -56,7 +68,8 @@ def rgb(ds):
     ds.SeriesDescription = '3D_Lab_'+ds.SeriesDescription
     ds.SeriesInstanceUID = get_series_uid_value(ds.SeriesInstanceUID)
     
-    assoc = ae.associate('192.168.21.16',2002,ae_title=b'SDM')
+    #assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
+    assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
     if assoc.is_established:
         status = assoc.send_c_store(ds)
         assoc.release()
