@@ -1,6 +1,6 @@
+import pydicom,logging,numpy as np
+from skimage.transform import resize
 from pynetdicom import AE, evt, StoragePresentationContexts
-import pydicom,logging,numpy as np
-import pydicom,logging,numpy as np
 
 logging.basicConfig(
     filename='/home/edu/Color/color.log',
@@ -36,22 +36,47 @@ def exist_sop(uid):
             f.write(f'{uid}\n')
 
 def rgb(ds):
-    logging.warning(f'jet {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
     pixel_data = ds.pixel_array
-    if ds.Modality == 'CT':
-        WindowCenter=list(ds.WindowCenter)[0]
-        WindowWidth=list(ds.WindowWidth)[0]
-        pixel_data = pixel_data + ds.RescaleIntercept
-        lower=max(WindowCenter-WindowWidth/2,np.percentile(pixel_data,1))
-        upper=min(WindowCenter+WindowWidth/2,np.percentile(pixel_data,99))
+    
+    if min(ds.Rows,ds.Columns) < 256:
+        normalized_data = pixel_data / np.max(pixel_data)
+        resized_data = resize(normalized_data, (2*ds.Rows, 2*ds.Columns), mode='reflect', anti_aliasing=True)
+        pixel_data = (resized_data * np.max(pixel_data)).astype(np.uint16)
+        ds.Rows, ds.Columns = pixel_data.shape
+    
+    if 'RedPaletteColorLookupTableData' in ds:
+        logging.warning(f'Palette {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
+        red_data = ds.RedPaletteColorLookupTableData
+        green_data = ds.GreenPaletteColorLookupTableData
+        blue_data = ds.BluePaletteColorLookupTableData
+        
+        red_palette = np.frombuffer(red_data, dtype=np.uint16)
+        green_palette = np.frombuffer(green_data, dtype=np.uint16)
+        blue_palette = np.frombuffer(blue_data, dtype=np.uint16)
+        
+        rgb_data = np.zeros((ds.Rows, ds.Columns, 3), dtype=np.uint8)
+        rgb_data[..., 0] = red_palette[pixel_data]
+        rgb_data[..., 1] = green_palette[pixel_data]
+        rgb_data[..., 2] = blue_palette[pixel_data]
     else:
-    	lower=np.percentile(pixel_data,1)
-    	upper=np.percentile(pixel_data,99)
-    if lower==upper:
-        upper+=1
-    normalized_pixel_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
-    grey_data = (normalized_pixel_data*255).astype(np.uint8)
-    rgb_data = jet(grey_data).astype(np.uint8)
+        logging.warning(f'jet {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
+        if ds.Modality == 'CT':
+            try:
+                WindowCenter,WindowWidth = ds.WindowCenter[0],ds.WindowWidth[0]
+            except:
+                WindowCenter,WindowWidth = ds.WindowCenter,ds.WindowWidth
+            pixel_data = pixel_data + ds.RescaleIntercept
+            lower = max(WindowCenter - WindowWidth / 2, np.percentile(pixel_data,1))
+            upper = min(WindowCenter + WindowWidth / 2, np.percentile(pixel_data,99))
+        else:
+            lower = np.percentile(pixel_data,1)
+            upper = np.percentile(pixel_data,99)
+        
+        if lower==upper:
+            upper += 1
+        normalized_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
+        grey_data = (normalized_data*255).astype(np.uint8)
+        rgb_data = jet(grey_data).astype(np.uint8)
     
     if 'RescaleIntercept' in ds:
         ds.RescaleIntercept = 0
@@ -91,4 +116,3 @@ for context in StoragePresentationContexts:
     ae.add_requested_context(context.abstract_syntax)
 
 ae.start_server(('', 11113), block=True, evt_handlers=handlers)
-
