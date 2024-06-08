@@ -1,6 +1,5 @@
-import os
-import pydicom
-import numpy as np
+import os,pydicom,numpy as np
+from skimage.transform import resize
 
 dicom_folder = r'C:\0'
 dst_folder = r'C:\1'
@@ -24,20 +23,46 @@ for root, dirs, files in os.walk(dicom_folder):
             if ds.PhotometricInterpretation == 'RGB':
                 break
             pixel_data = ds.pixel_array
-            if ds.Modality == 'CT':
-                WindowCenter=list(ds.WindowCenter)[0]
-                WindowWidth=list(ds.WindowWidth)[0]
-                pixel_data = pixel_data + ds.RescaleIntercept
-                lower=max(WindowCenter-WindowWidth/2,np.percentile(pixel_data,1))
-                upper=min(WindowCenter+WindowWidth/2,np.percentile(pixel_data,99))
+            
+            if min(ds.Rows,ds.Columns) < 256:
+                normalized_data = pixel_data / np.max(pixel_data)
+                resized_data = resize(normalized_data, (2*ds.Rows, 2*ds.Columns), mode='reflect', anti_aliasing=True)
+                pixel_data = (resized_data * np.max(pixel_data)).astype(np.uint16)
+                ds.Rows, ds.Columns = pixel_data.shape
+            
+            if 'RedPaletteColorLookupTableData' in ds:
+                print("Palette")
+                red_data = ds.RedPaletteColorLookupTableData
+                green_data = ds.GreenPaletteColorLookupTableData
+                blue_data = ds.BluePaletteColorLookupTableData
+                
+                red_palette = np.frombuffer(red_data, dtype=np.uint16)
+                green_palette = np.frombuffer(green_data, dtype=np.uint16)
+                blue_palette = np.frombuffer(blue_data, dtype=np.uint16)
+                
+                rgb_data = np.zeros((ds.Rows, ds.Columns, 3), dtype=np.uint8)
+                rgb_data[..., 0] = red_palette[pixel_data]
+                rgb_data[..., 1] = green_palette[pixel_data]
+                rgb_data[..., 2] = blue_palette[pixel_data]
             else:
-                lower=np.percentile(pixel_data,1)
-                upper=np.percentile(pixel_data,99)
-            if lower==upper:
-                upper+=1
-            normalized_pixel_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
-            grey_data = (normalized_pixel_data*255).astype(np.uint8)
-            rgb_data = jet(grey_data).astype(np.uint8)
+                print("jet")
+                if ds.Modality == 'CT':
+                    try:
+                        WindowCenter,WindowWidth = ds.WindowCenter[0],ds.WindowWidth[0]
+                    except:
+                        WindowCenter,WindowWidth = ds.WindowCenter,ds.WindowWidth
+                    pixel_data = pixel_data + ds.RescaleIntercept
+                    lower = max(WindowCenter - WindowWidth / 2, np.percentile(pixel_data,1))
+                    upper = min(WindowCenter + WindowWidth / 2, np.percentile(pixel_data,99))
+                else:
+                    lower = np.percentile(pixel_data,1)
+                    upper = np.percentile(pixel_data,99)
+                
+                if lower==upper:
+                    upper += 1
+                normalized_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
+                grey_data = (normalized_data*255).astype(np.uint8)
+                rgb_data = jet(grey_data).astype(np.uint8)
             
             if 'RescaleIntercept' in ds:
                 ds.RescaleIntercept = 0
@@ -49,6 +74,7 @@ for root, dirs, files in os.walk(dicom_folder):
             ds.PixelRepresentation = 0
             ds.PixelData = rgb_data.tobytes()
             ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+            
             relative_path = os.path.relpath(src_file, dicom_folder)
             dst_path = os.path.join(dst_folder, relative_path)
             dst_dir = os.path.dirname(dst_path)
