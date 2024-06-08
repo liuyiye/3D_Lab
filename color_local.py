@@ -7,7 +7,11 @@ dst_folder = r'C:\1'
 if not os.path.exists(dst_folder):
     os.makedirs(dst_folder)
 
-jet = np.genfromtxt('values_colors.csv', delimiter=',', skip_header=1)
+grey2rgb = np.genfromtxt('jet.csv', delimiter=',', skip_header=1)
+grey2rgb = grey2rgb[:,1:]
+def jet(x):
+    return(grey2rgb[x])
+
 for root, dirs, files in os.walk(dicom_folder):
     for file in files:
         src_file = os.path.join(root, file)
@@ -20,24 +24,21 @@ for root, dirs, files in os.walk(dicom_folder):
             if ds.PhotometricInterpretation == 'RGB':
                 break
             pixel_data = ds.pixel_array
-            i,j = pixel_data.shape
-            if ds.Modality=='CT':
+            if ds.Modality == 'CT':
+                WindowCenter=list(ds.WindowCenter)[0]
+                WindowWidth=list(ds.WindowWidth)[0]
                 pixel_data = pixel_data + ds.RescaleIntercept
-                lower=max(ds.WindowCenter-ds.WindowWidth/2,np.percentile(pixel_data,1))
-                upper=min(ds.WindowCenter+ds.WindowWidth/2,np.percentile(pixel_data,99))
+                lower=max(WindowCenter-WindowWidth/2,np.percentile(pixel_data,1))
+                upper=min(WindowCenter+WindowWidth/2,np.percentile(pixel_data,99))
             else:
                 lower=np.percentile(pixel_data,1)
                 upper=np.percentile(pixel_data,99)
             if lower==upper:
                 upper+=1
             normalized_pixel_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
-            grey_data = normalized_pixel_data*255
-            rgb_data = np.zeros((i,j,3), dtype=np.uint8)
-            for y in range(i):
-                for x in range(j):
-                    grey_value = grey_data[y, x]
-                    rgb_value = jet[int(grey_value)]
-                    rgb_data[y, x] = rgb_value[1:]
+            grey_data = (normalized_pixel_data*255).astype(np.uint8)
+            rgb_data = jet(grey_data).astype(np.uint8)
+            
             if 'RescaleIntercept' in ds:
                 ds.RescaleIntercept = 0
             ds.PhotometricInterpretation = 'RGB'
