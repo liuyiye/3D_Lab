@@ -1,6 +1,6 @@
 from pynetdicom import AE, evt, StoragePresentationContexts
 import pydicom,logging,numpy as np
-#import cv2
+import pydicom,logging,numpy as np
 
 logging.basicConfig(
     filename='/home/edu/Color/color.log',
@@ -9,9 +9,12 @@ logging.basicConfig(
 
 SERIES_UID_FILE = '/home/edu/Color/received_series.txt'
 SOP_UID_FILE = '/home/edu/Color/received_sop.txt'
-COLOR_MAP = '/home/edu/Color/color_map.csv'
+COLOR_MAP = '/home/edu/Color/jet.csv'
 
-jet = np.genfromtxt(COLOR_MAP, delimiter=',', skip_header=1)
+grey2rgb = np.genfromtxt(COLOR_MAP, delimiter=',', skip_header=1)
+grey2rgb = grey2rgb[:,1:]
+def jet(x):
+    return(grey2rgb[x])
 
 def get_series_uid_value(uid):
     with open(SERIES_UID_FILE, 'r+') as f:
@@ -33,26 +36,23 @@ def exist_sop(uid):
             f.write(f'{uid}\n')
 
 def rgb(ds):
-    logging.warning(f'jet {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription}')
+    logging.warning(f'jet {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
     pixel_data = ds.pixel_array
-    i,j = pixel_data.shape
     if ds.Modality == 'CT':
+        WindowCenter=list(ds.WindowCenter)[0]
+        WindowWidth=list(ds.WindowWidth)[0]
         pixel_data = pixel_data + ds.RescaleIntercept
-        lower=max(ds.WindowCenter-ds.WindowWidth/2,np.percentile(pixel_data,1))
-        upper=min(ds.WindowCenter+ds.WindowWidth/2,np.percentile(pixel_data,99))
+        lower=max(WindowCenter-WindowWidth/2,np.percentile(pixel_data,1))
+        upper=min(WindowCenter+WindowWidth/2,np.percentile(pixel_data,99))
     else:
     	lower=np.percentile(pixel_data,1)
     	upper=np.percentile(pixel_data,99)
     if lower==upper:
         upper+=1
     normalized_pixel_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
-    grey_data = normalized_pixel_data*255
-    rgb_data = np.zeros((i,j,3), dtype=np.uint8)
-    for y in range(i):
-        for x in range(j):
-            grey_value = grey_data[y, x]
-            rgb_value = jet[int(grey_value)]
-            rgb_data[y, x] = rgb_value[1:]
+    grey_data = (normalized_pixel_data*255).astype(np.uint8)
+    rgb_data = jet(grey_data).astype(np.uint8)
+    
     if 'RescaleIntercept' in ds:
         ds.RescaleIntercept = 0
     ds.PhotometricInterpretation = 'RGB'
@@ -81,12 +81,11 @@ def handle_store(event):
     if ds.PhotometricInterpretation.startswith('MONO') and not exist_sop(ds.SOPInstanceUID):
         rgb(ds)
     else:
-        logging.warning(f'discard {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription}')
+        logging.warning(f'discard {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
     return 0x0000
 
 handlers = [(evt.EVT_C_STORE, handle_store)]
 ae = AE(ae_title=b'Color')
-
 for context in StoragePresentationContexts:
     ae.add_supported_context(context.abstract_syntax)
     ae.add_requested_context(context.abstract_syntax)
