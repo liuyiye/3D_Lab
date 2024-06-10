@@ -6,10 +6,9 @@ dst_folder = r'C:\1'
 if not os.path.exists(dst_folder):
     os.makedirs(dst_folder)
 
-grey2rgb = np.genfromtxt('jet.csv', delimiter=',', skip_header=1)
-grey2rgb = grey2rgb[:,1:]
-def jet(x):
-    return(grey2rgb[x])
+palette = np.genfromtxt('palette1275.csv', delimiter=',', skip_header=0)
+def p(x):
+    return(palette[x])
 
 for root, dirs, files in os.walk(dicom_folder):
     for file in files:
@@ -45,7 +44,7 @@ for root, dirs, files in os.walk(dicom_folder):
                 rgb_data[..., 1] = green_palette[pixel_data]
                 rgb_data[..., 2] = blue_palette[pixel_data]
             else:
-                print("jet")
+                print("P1275")
                 if ds.Modality == 'CT':
                     try:
                         WindowCenter,WindowWidth = ds.WindowCenter[0],ds.WindowWidth[0]
@@ -61,8 +60,8 @@ for root, dirs, files in os.walk(dicom_folder):
                 if lower==upper:
                     upper += 1
                 normalized_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
-                grey_data = (normalized_data*255).astype(np.uint8)
-                rgb_data = jet(grey_data).astype(np.uint8)
+                grey_data = (normalized_data * 1274).astype(np.uint16)
+                rgb_data = p(grey_data).astype(np.uint8)
             
             if 'RescaleIntercept' in ds:
                 ds.RescaleIntercept = 0
@@ -74,6 +73,11 @@ for root, dirs, files in os.walk(dicom_folder):
             ds.PixelRepresentation = 0
             ds.PixelData = rgb_data.tobytes()
             ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+            
+            PaletteTag = [0x281101,0x281102,0x281103,0x281199,0x281201,0x281202,0x281203]
+            for tag in list(ds.keys()):
+                if tag.group % 2 == 1 or tag in PaletteTag :
+                    del ds[tag]
             
             relative_path = os.path.relpath(src_file, dicom_folder)
             dst_path = os.path.join(dst_folder, relative_path)
