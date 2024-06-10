@@ -9,12 +9,10 @@ logging.basicConfig(
 
 SERIES_UID_FILE = '/home/edu/Color/received_series.txt'
 SOP_UID_FILE = '/home/edu/Color/received_sop.txt'
-COLOR_MAP = '/home/edu/Color/jet.csv'
 
-grey2rgb = np.genfromtxt(COLOR_MAP, delimiter=',', skip_header=1)
-grey2rgb = grey2rgb[:,1:]
-def jet(x):
-    return(grey2rgb[x])
+palette = np.genfromtxt('palette1275.csv', delimiter=',', skip_header=0)
+def p(x):
+    return(palette[x])
 
 def get_series_uid_value(uid):
     with open(SERIES_UID_FILE, 'r+') as f:
@@ -59,7 +57,7 @@ def rgb(ds):
         rgb_data[..., 1] = green_palette[pixel_data]
         rgb_data[..., 2] = blue_palette[pixel_data]
     else:
-        logging.warning(f'jet {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
+        logging.warning(f'P1275 {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
         if ds.Modality == 'CT':
             try:
                 WindowCenter,WindowWidth = ds.WindowCenter[0],ds.WindowWidth[0]
@@ -75,8 +73,8 @@ def rgb(ds):
         if lower==upper:
             upper += 1
         normalized_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
-        grey_data = (normalized_data*255).astype(np.uint8)
-        rgb_data = jet(grey_data).astype(np.uint8)
+        grey_data = (normalized_data * 1274).astype(np.uint16)
+        rgb_data = p(grey_data).astype(np.uint8)
     
     if 'RescaleIntercept' in ds:
         ds.RescaleIntercept = 0
@@ -92,6 +90,11 @@ def rgb(ds):
     ds.SOPInstanceUID = pydicom.uid.generate_uid()
     ds.SeriesDescription = '3D_Lab_'+ds.SeriesDescription
     ds.SeriesInstanceUID = get_series_uid_value(ds.SeriesInstanceUID)
+    
+    PaletteTag = [0x281101,0x281102,0x281103,0x281199,0x281201,0x281202,0x281203]
+    for tag in list(ds.keys()):
+        if tag.group % 2 == 1 or tag in PaletteTag :
+            del ds[tag]
     
     #assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
     assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
