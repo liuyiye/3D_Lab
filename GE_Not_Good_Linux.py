@@ -37,7 +37,7 @@ def handle_store(event):
         ds.save_as(file_path, write_like_original=False)
         return 0x0000
     else:
-        logging.warning(f'discarding image {ds.PatientID,ds.StudyDate,ds.SeriesDescription,ds.SOPInstanceUID}')
+        logging.warning(f'discarding image {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
         return 0x0000
 
 
@@ -67,6 +67,7 @@ def t3237(series_dir):
 
 def t3237w(series_dir):
     files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)]
+    if pydicom.dcmread(files[0]).SeriesDescription.startswith('3D_Lab'):return
     
     #判断哪个轴的差值最大，并按照该轴来排序
     position=[pydicom.dcmread(file)[0x00200032].value for file in files]
@@ -139,7 +140,7 @@ def check_series():
             try:images = ds.ImagesInAcquisition # 有些序列没有这个tag
             except:images = 0
             n=len(series_files)
-            if n>60 and (n==images or n==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID)):
+            if n>9 and (n==images or n==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID)):
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} transfer complete, forwarding...')
                 if t3237(series_path) or ds.SeriesDescription.startswith('3D_Lab'):
                     now = datetime.now()
@@ -154,8 +155,8 @@ def check_series():
                         shutil.move(series_path, complete_path)
                         logging.warning(f'all done')
                         #print(f'{date_time} all done')
-                        send_to_new_pacs(complete_path)
-                        logging.warning(f'new pacs done')
+                        #send_to_new_pacs(complete_path)
+                        #logging.warning(f'new pacs done')
                 else:
                     shutil.rmtree(series_path)
                     logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} t3237 right or None, removed')
@@ -164,7 +165,7 @@ def check_series():
 # 修正图像标签,转发图像序列
 def forward_series(series_dir):
     ae.connection_timeout=60
-    assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
+    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
     if assoc.is_established:
         t3237w(series_dir)
         for file in os.listdir(series_dir):

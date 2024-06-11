@@ -10,7 +10,7 @@ logging.basicConfig(
 SERIES_UID_FILE = '/home/edu/Color/received_series.txt'
 SOP_UID_FILE = '/home/edu/Color/received_sop.txt'
 
-palette = np.genfromtxt('palette1275.csv', delimiter=',', skip_header=0)
+palette = np.genfromtxt('/home/edu/Color/palette1275.csv', delimiter=',', skip_header=0)
 def p(x):
     return(palette[x])
 
@@ -36,13 +36,15 @@ def exist_sop(uid):
 def rgb(ds):
     pixel_data = ds.pixel_array
     
-    if min(ds.Rows,ds.Columns) < 256:
+    if ds.Modality == 'MR' and min(ds.Rows,ds.Columns) < 256:
         normalized_data = pixel_data / np.max(pixel_data)
         resized_data = resize(normalized_data, (2*ds.Rows, 2*ds.Columns), mode='reflect', anti_aliasing=True)
         pixel_data = (resized_data * np.max(pixel_data)).astype(np.uint16)
         ds.Rows, ds.Columns = pixel_data.shape
+        lower = np.percentile(pixel_data,2)
+        upper = np.percentile(pixel_data,98)
     
-    if 'RedPaletteColorLookupTableData' in ds:
+    '''if 'RedPaletteColorLookupTableData' in ds:
         logging.warning(f'Palette {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
         red_data = ds.RedPaletteColorLookupTableData
         green_data = ds.GreenPaletteColorLookupTableData
@@ -57,24 +59,25 @@ def rgb(ds):
         rgb_data[..., 1] = green_palette[pixel_data]
         rgb_data[..., 2] = blue_palette[pixel_data]
     else:
-        logging.warning(f'P1275 {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
-        if ds.Modality == 'CT':
-            try:
-                WindowCenter,WindowWidth = ds.WindowCenter[0],ds.WindowWidth[0]
-            except:
-                WindowCenter,WindowWidth = ds.WindowCenter,ds.WindowWidth
-            pixel_data = pixel_data + ds.RescaleIntercept
-            lower = max(WindowCenter - WindowWidth / 2, np.percentile(pixel_data,1))
-            upper = min(WindowCenter + WindowWidth / 2, np.percentile(pixel_data,99))
-        else:
-            lower = np.percentile(pixel_data,1)
-            upper = np.percentile(pixel_data,99)
-        
-        if lower==upper:
-            upper += 1
-        normalized_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
-        grey_data = (normalized_data * 1274).astype(np.uint16)
-        rgb_data = p(grey_data).astype(np.uint8)
+        logging.warning(f'P1275 {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')'''
+    
+    if ds.Modality == 'CT':
+        try:
+            WindowCenter,WindowWidth = ds.WindowCenter[0],ds.WindowWidth[0]
+        except:
+            WindowCenter,WindowWidth = ds.WindowCenter,ds.WindowWidth
+        pixel_data = pixel_data + ds.RescaleIntercept
+        lower = max(WindowCenter - WindowWidth / 2, np.percentile(pixel_data,1))
+        upper = min(WindowCenter + WindowWidth / 2, np.percentile(pixel_data,99))
+    else:
+        lower = np.percentile(pixel_data,1)
+        upper = np.percentile(pixel_data,99)
+    
+    if lower==upper:
+        upper += 1
+    normalized_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
+    grey_data = (normalized_data * 1274).astype(np.uint16)
+    rgb_data = p(grey_data).astype(np.uint8)
     
     if 'RescaleIntercept' in ds:
         ds.RescaleIntercept = 0
@@ -91,10 +94,12 @@ def rgb(ds):
     ds.SeriesDescription = '3D_Lab_'+ds.SeriesDescription
     ds.SeriesInstanceUID = get_series_uid_value(ds.SeriesInstanceUID)
     
-    PaletteTag = [0x281101,0x281102,0x281103,0x281199,0x281201,0x281202,0x281203]
+    '''PaletteTag = [0x281101,0x281102,0x281103,0x281199,0x281201,0x281202,0x281203]
     for tag in list(ds.keys()):
         if tag.group % 2 == 1 or tag in PaletteTag :
-            del ds[tag]
+            del ds[tag]'''
+    
+    logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
     
     #assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
     assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
