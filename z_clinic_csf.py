@@ -32,7 +32,7 @@ def max3d(mask):
     return(L,W,H) #返回最大三维长径、宽度、高度
 
 
-def mask154to21(mask):
+def mask154to22(mask):
     mapping={
     0:[1,2,3,4,17,20,21,22,23,36],
     1:[44,45,57,61,67,73,75,79,87,89,91,93,97,101,103,111,113,127,131,135,137,139,151],
@@ -138,7 +138,12 @@ def w():
     
     slicer.cli.runSync(slicer.modules.resamplescalarvolume, None, parameters)
     
-    maskVolumeNode = slicer.util.getNode("mask")
+    try:
+        maskVolumeNode = slicer.util.getNode("mask22")
+        mask154 = False
+    except:
+        maskVolumeNode = slicer.util.getNode("mask")
+        mask154 = True
     referenceVolumeNode = slicer.util.getNode("lesion_L01_111")
     outputVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLScalarVolumeNode", "mask_111")
     
@@ -166,7 +171,8 @@ def w():
     
     mask_node=slicer.util.getNode('mask_111')
     mask=slicer.util.arrayFromVolume(mask_node)
-    mask=mask154to21(mask)
+    if mask154:
+        mask=mask154to22(mask)
     
     flair_node=slicer.util.getNode('lesion_L01_111')
     flair=slicer.util.arrayFromVolume(flair_node)
