@@ -138,12 +138,7 @@ def w():
     
     slicer.cli.runSync(slicer.modules.resamplescalarvolume, None, parameters)
     
-    try:
-        maskVolumeNode = slicer.util.getNode("mask22")
-        mask154 = False
-    except:
-        maskVolumeNode = slicer.util.getNode("mask")
-        mask154 = True
+    maskVolumeNode = slicer.util.getNode("mask")
     referenceVolumeNode = slicer.util.getNode("lesion_L01_111")
     outputVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLScalarVolumeNode", "mask_111")
     
@@ -171,7 +166,7 @@ def w():
     
     mask_node=slicer.util.getNode('mask_111')
     mask=slicer.util.arrayFromVolume(mask_node)
-    if mask154:
+    if mask.max() > 64:
         mask=mask154to22(mask)
     
     flair_node=slicer.util.getNode('lesion_L01_111')
