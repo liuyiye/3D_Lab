@@ -7,7 +7,7 @@ if not os.path.exists(dst_folder):
     os.makedirs(dst_folder)
 
 for root, dirs, files in os.walk(dicom_folder):
-   for file in files:
+    for file in files:
         src_file = os.path.join(root, file)
         try:    
             ds=pydicom.dcmread(src_file)
@@ -47,13 +47,13 @@ for root, dirs, files in os.walk(dst_folder):
                 except:
                     WindowCenter,WindowWidth = ds.WindowCenter,ds.WindowWidth
                 pixel_data = pixel_data + ds.RescaleIntercept
-                lower = max(WindowCenter - WindowWidth / 2, np.percentile(pixel_data,1))
-                upper = min(WindowCenter + WindowWidth / 2, np.percentile(pixel_data,99))
+                lower = max(WindowCenter - WindowWidth / 2, np.percentile(datas,1))
+                upper = min(WindowCenter + WindowWidth / 2, np.percentile(datas,99))
             elif 'ttp' in ds.SeriesDescription.lower():
-                lower = np.percentile(datas[datas>0],1)
+                lower = np.percentile(datas,1)
                 upper = np.percentile(datas,96)
             elif 'mtt' in ds.SeriesDescription.lower():
-                lower = np.percentile(datas[datas>0],1)
+                lower = np.percentile(datas,1)
                 upper = np.percentile(datas,93)
             else:
                 lower = np.percentile(datas,1)
