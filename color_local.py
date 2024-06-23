@@ -1,17 +1,13 @@
 import os,pydicom,numpy as np
 from skimage.transform import resize
 
-dicom_folder = r'c:\0'
-dst_folder = r'c:\1'
+dicom_folder = r'C:\0'
+dst_folder = r'C:\1'
 if not os.path.exists(dst_folder):
     os.makedirs(dst_folder)
 
-palette = np.genfromtxt('palette1275.csv', delimiter=',', skip_header=0)
-def p(x):
-    return(palette[x])
-
 for root, dirs, files in os.walk(dicom_folder):
-    for file in files:
+   for file in files:
         src_file = os.path.join(root, file)
         try:    
             ds=pydicom.dcmread(src_file)
@@ -19,32 +15,31 @@ for root, dirs, files in os.walk(dicom_folder):
         except:
             is_dicom = False
         if is_dicom:
+            series_dir = os.path.join(dst_folder, ds.SeriesInstanceUID)
+            os.makedirs(series_dir, exist_ok=True)
+            file_path = os.path.join(series_dir, f'{ds.SOPInstanceUID}.dcm')
+            ds.save_as(file_path, write_like_original=False)
+
+palette = np.genfromtxt('palette1275.csv', delimiter=',', skip_header=0)
+def p(x):
+    return(palette[x])
+
+for root, dirs, files in os.walk(dst_folder):
+    for d in dirs:
+        dicom_files = [os.path.join(root,d,f) for f in os.listdir(os.path.join(root,d))]
+        datas = np.array([pydicom.dcmread(file).pixel_array for file in dicom_files])
+        
+        for file in dicom_files:
+            ds=pydicom.dcmread(file)
             if ds.PhotometricInterpretation == 'RGB':
                 break
             pixel_data = ds.pixel_array
             
-            if ds.Modality == 'MR' and min(ds.Rows,ds.Columns) < 256:
+            if min(ds.Rows,ds.Columns) < 256:
                 normalized_data = pixel_data / np.max(pixel_data)
                 resized_data = resize(normalized_data, (2*ds.Rows, 2*ds.Columns), mode='reflect', anti_aliasing=True)
                 pixel_data = (resized_data * np.max(pixel_data)).astype(np.uint16)
                 ds.Rows, ds.Columns = pixel_data.shape
-                lower = np.percentile(pixel_data,2)
-                upper = np.percentile(pixel_data,98)
-            
-            '''if 'RedPaletteColorLookupTableData' in ds:
-                print("Palette")
-                red_data = ds.RedPaletteColorLookupTableData
-                green_data = ds.GreenPaletteColorLookupTableData
-                blue_data = ds.BluePaletteColorLookupTableData
-                
-                red_palette = np.frombuffer(red_data, dtype=np.uint16)
-                green_palette = np.frombuffer(green_data, dtype=np.uint16)
-                blue_palette = np.frombuffer(blue_data, dtype=np.uint16)
-                
-                rgb_data = np.zeros((ds.Rows, ds.Columns, 3), dtype=np.uint8)
-                rgb_data[..., 0] = red_palette[pixel_data]
-                rgb_data[..., 1] = green_palette[pixel_data]
-                rgb_data[..., 2] = blue_palette[pixel_data]'''
             
             if ds.Modality == 'CT':
                 try:
@@ -54,10 +49,16 @@ for root, dirs, files in os.walk(dicom_folder):
                 pixel_data = pixel_data + ds.RescaleIntercept
                 lower = max(WindowCenter - WindowWidth / 2, np.percentile(pixel_data,1))
                 upper = min(WindowCenter + WindowWidth / 2, np.percentile(pixel_data,99))
+            elif 'ttp' in ds.SeriesDescription.lower():
+                lower = np.percentile(datas[datas>0],1)
+                upper = np.percentile(datas,96)
+            elif 'mtt' in ds.SeriesDescription.lower():
+                lower = np.percentile(datas[datas>0],1)
+                upper = np.percentile(datas,93)
             else:
-                lower = np.percentile(pixel_data,1)
-                upper = np.percentile(pixel_data,99)
-                
+                lower = np.percentile(datas,1)
+                upper = np.percentile(datas,99)
+            
             if lower==upper:
                 upper += 1
             normalized_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
@@ -74,15 +75,4 @@ for root, dirs, files in os.walk(dicom_folder):
             ds.PixelRepresentation = 0
             ds.PixelData = rgb_data.tobytes()
             ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
-            
-            '''PaletteTag = [0x281101,0x281102,0x281103,0x281199,0x281201,0x281202,0x281203]
-            for tag in list(ds.keys()):
-                if tag.group % 2 == 1 or tag in PaletteTag :
-                    del ds[tag]'''
-            
-            relative_path = os.path.relpath(src_file, dicom_folder)
-            dst_path = os.path.join(dst_folder, relative_path)
-            dst_dir = os.path.dirname(dst_path)
-            if not os.path.exists(dst_dir):
-                  os.makedirs(dst_dir)
-            ds.save_as(dst_path)
+            ds.save_as(file)
