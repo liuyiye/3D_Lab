@@ -21,7 +21,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-palette = np.genfromtxt('palette1275.csv', delimiter=',', skip_header=0)
+palette = np.genfromtxt('/home/edu/Color/palette1275.csv', delimiter=',', skip_header=0)
 def p(x):
     return(palette[x])
 
