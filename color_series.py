@@ -1,8 +1,8 @@
 import os,csv,time,shutil,pydicom,logging,threading,numpy as np
 from datetime import datetime
 from skimage.transform import resize
-from pynetdicom import AE,evt,StoragePresentationContexts,ALL_TRANSFER_SYNTAXES
-from pynetdicom.sop_class import PatientRootQueryRetrieveInformationModelFind
+from pynetdicom import AE, evt
+from pynetdicom.sop_class import CTImageStorage,MRImageStorage,PatientRootQueryRetrieveInformationModelFind
 
 
 # 加载已传输图像的列表
@@ -28,7 +28,8 @@ def p(x):
 
 def color(series_dir):
     dicom_files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)]
-    datas = np.array([pydicom.dcmread(file).pixel_array for file in dicom_files])
+    if pydicom.dcmread(dicom_files[0]).Modality == 'MR':
+        datas = np.array([pydicom.dcmread(file).pixel_array for file in dicom_files])
     siuid=pydicom.uid.generate_uid()
     for file in dicom_files:
         ds=pydicom.dcmread(file)
@@ -48,8 +49,8 @@ def color(series_dir):
             except:
                 WindowCenter,WindowWidth = ds.WindowCenter,ds.WindowWidth
             pixel_data = pixel_data + ds.RescaleIntercept
-            lower = max(WindowCenter - WindowWidth / 2, np.percentile(datas,1))
-            upper = min(WindowCenter + WindowWidth / 2, np.percentile(datas,99))
+            lower = WindowCenter - WindowWidth / 2
+            upper = WindowCenter + WindowWidth / 2
         elif 'ttp' in ds.SeriesDescription.lower():
             lower = np.percentile(datas,1)
             upper = np.percentile(datas,97)
@@ -141,7 +142,7 @@ def check_series():
             try:images = ds.ImagesInAcquisition # 有些序列没有这个tag
             except:images = 0
             n=len(series_files)
-            if n==images or n==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID):
+            if n==images or n==image_count_in_series(ds.PatientID,series_dir):
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} transfer complete, forwarding...')
                 color(series_path)
                 now = datetime.now()
@@ -165,28 +166,27 @@ def send_to_new_pacs(series_dir):
             ds = pydicom.dcmread(os.path.join(series_dir, file))
             status = assoc.send_c_store(ds)
         assoc.release()
-    return True
-
-
-def check_series_thread():
-    while True:
-        time.sleep(10)
-        check_series()
-
-
-# 创建检查线程
-check_thread = threading.Thread(target=check_series_thread)
-check_thread.start()
+        return True
 
 
 # 创建应用实体
 handlers = [(evt.EVT_C_STORE, handle_store)]
 ae = AE(ae_title=b'Color')
-for context in StoragePresentationContexts:
-    ae.add_supported_context(context.abstract_syntax, ALL_TRANSFER_SYNTAXES)
-    ae.add_requested_context(context.abstract_syntax, ALL_TRANSFER_SYNTAXES)
+ae.add_supported_context(MRImageStorage)
+ae.add_supported_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
+ae.add_requested_context(MRImageStorage)
+ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
+ae.add_supported_context(CTImageStorage)
+ae.add_supported_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
+ae.add_requested_context(CTImageStorage)
+ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
 
 
 # 启动服务器
-ae.start_server(('172.20.99.71', 11113), evt_handlers=handlers)
+ae.start_server(('172.20.99.71', 11113), block=False, evt_handlers=handlers)
 
+
+while True:
+    time.sleep(10)
+    check_series()
+    
