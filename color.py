@@ -1,8 +1,7 @@
 import pydicom,logging,numpy as np
 from skimage.transform import resize
-from pynetdicom import AE,evt,debug_logger,StoragePresentationContexts,ALL_TRANSFER_SYNTAXES
-
-#debug_logger()
+from pynetdicom import AE, evt
+from pynetdicom.sop_class import CTImageStorage,MRImageStorage
 
 logging.basicConfig(
     filename='/home/edu/Color/color.log',
@@ -38,30 +37,11 @@ def exist_sop(uid):
 def rgb(ds):
     pixel_data = ds.pixel_array
     
-    if ds.Modality == 'MR' and min(ds.Rows,ds.Columns) < 256:
+    if min(ds.Rows,ds.Columns) < 256:
         normalized_data = pixel_data / np.max(pixel_data)
         resized_data = resize(normalized_data, (2*ds.Rows, 2*ds.Columns), mode='reflect', anti_aliasing=True)
         pixel_data = (resized_data * np.max(pixel_data)).astype(np.uint16)
         ds.Rows, ds.Columns = pixel_data.shape
-        lower = np.percentile(pixel_data,2)
-        upper = np.percentile(pixel_data,98)
-    
-    '''if 'RedPaletteColorLookupTableData' in ds:
-        logging.warning(f'Palette {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
-        red_data = ds.RedPaletteColorLookupTableData
-        green_data = ds.GreenPaletteColorLookupTableData
-        blue_data = ds.BluePaletteColorLookupTableData
-        
-        red_palette = np.frombuffer(red_data, dtype=np.uint16)
-        green_palette = np.frombuffer(green_data, dtype=np.uint16)
-        blue_palette = np.frombuffer(blue_data, dtype=np.uint16)
-        
-        rgb_data = np.zeros((ds.Rows, ds.Columns, 3), dtype=np.uint8)
-        rgb_data[..., 0] = red_palette[pixel_data]
-        rgb_data[..., 1] = green_palette[pixel_data]
-        rgb_data[..., 2] = blue_palette[pixel_data]
-    else:
-        logging.warning(f'P1275 {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')'''
     
     if ds.Modality == 'CT':
         try:
@@ -69,8 +49,14 @@ def rgb(ds):
         except:
             WindowCenter,WindowWidth = ds.WindowCenter,ds.WindowWidth
         pixel_data = pixel_data + ds.RescaleIntercept
-        lower = max(WindowCenter - WindowWidth / 2, np.percentile(pixel_data,1))
-        upper = min(WindowCenter + WindowWidth / 2, np.percentile(pixel_data,99))
+        lower = WindowCenter - WindowWidth / 2
+        upper = WindowCenter + WindowWidth / 2
+    elif 'ttp' in ds.SeriesDescription.lower():
+        lower = np.percentile(pixel_data,1)
+        upper = np.percentile(pixel_data,97)
+    elif 'mtt' in ds.SeriesDescription.lower():
+        lower = np.percentile(pixel_data,1)
+        upper = np.percentile(pixel_data,98)
     else:
         lower = np.percentile(pixel_data,1)
         upper = np.percentile(pixel_data,99)
@@ -81,7 +67,6 @@ def rgb(ds):
     grey_data = (normalized_data * 1274).astype(np.uint16)
     rgb_data = p(grey_data).astype(np.uint8)
     
-    logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
     if 'RescaleIntercept' in ds:
         ds.RescaleIntercept = 0
     ds.PhotometricInterpretation = 'RGB'
@@ -97,14 +82,9 @@ def rgb(ds):
     ds.SeriesDescription = '3D_Lab_'+ds.SeriesDescription
     ds.SeriesInstanceUID = get_series_uid_value(ds.SeriesInstanceUID)
     
-    '''PaletteTag = [0x281101,0x281102,0x281103,0x281199,0x281201,0x281202,0x281203]
-    for tag in list(ds.keys()):
-        if tag.group % 2 == 1 or tag in PaletteTag :
-            del ds[tag]'''
+    logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
     
     assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
-    #assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
-    #assoc = ae.associate('172.20.99.71', 11111, ae_title=b'SCP')
     if assoc.is_established:
         status = assoc.send_c_store(ds)
         assoc.release()
@@ -121,8 +101,13 @@ def handle_store(event):
 
 handlers = [(evt.EVT_C_STORE, handle_store)]
 ae = AE(ae_title=b'Color')
-for context in StoragePresentationContexts:
-    ae.add_supported_context(context.abstract_syntax, ALL_TRANSFER_SYNTAXES)
-    ae.add_requested_context(context.abstract_syntax, ALL_TRANSFER_SYNTAXES)
+ae.add_supported_context(MRImageStorage)
+ae.add_supported_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
+ae.add_requested_context(MRImageStorage)
+ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
+ae.add_supported_context(CTImageStorage)
+ae.add_supported_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
+ae.add_requested_context(CTImageStorage)
+ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
 
-ae.start_server(('', 11113), block=True, evt_handlers=handlers)
+ae.start_server(('172.20.99.71', 11113), block=True, evt_handlers=handlers)

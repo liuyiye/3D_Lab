@@ -47,14 +47,14 @@ for root, dirs, files in os.walk(dst_folder):
                 except:
                     WindowCenter,WindowWidth = ds.WindowCenter,ds.WindowWidth
                 pixel_data = pixel_data + ds.RescaleIntercept
-                lower = max(WindowCenter - WindowWidth / 2, np.percentile(datas,1))
-                upper = min(WindowCenter + WindowWidth / 2, np.percentile(datas,99))
+                lower = WindowCenter - WindowWidth / 2
+                upper = WindowCenter + WindowWidth / 2
             elif 'ttp' in ds.SeriesDescription.lower():
                 lower = np.percentile(datas,1)
-                upper = np.percentile(datas,96)
+                upper = np.percentile(datas,97)
             elif 'mtt' in ds.SeriesDescription.lower():
                 lower = np.percentile(datas,1)
-                upper = np.percentile(datas,93)
+                upper = np.percentile(datas,98)
             else:
                 lower = np.percentile(datas,1)
                 upper = np.percentile(datas,99)
