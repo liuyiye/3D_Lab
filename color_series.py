@@ -1,8 +1,8 @@
 import os,csv,time,shutil,pydicom,logging,threading,numpy as np
 from datetime import datetime
 from skimage.transform import resize
-from pynetdicom import (AE, evt)
-from pynetdicom.sop_class import CTImageStorage,MRImageStorage,PatientRootQueryRetrieveInformationModelFind
+from pynetdicom import AE,evt,StoragePresentationContexts,ALL_TRANSFER_SYNTAXES
+from pynetdicom.sop_class import PatientRootQueryRetrieveInformationModelFind
 
 
 # 加载已传输图像的列表
@@ -52,10 +52,10 @@ def color(series_dir):
             upper = min(WindowCenter + WindowWidth / 2, np.percentile(datas,99))
         elif 'ttp' in ds.SeriesDescription.lower():
             lower = np.percentile(datas,1)
-            upper = np.percentile(datas,96)
+            upper = np.percentile(datas,97)
         elif 'mtt' in ds.SeriesDescription.lower():
             lower = np.percentile(datas,1)
-            upper = np.percentile(datas,93)
+            upper = np.percentile(datas,98)
         else:
             lower = np.percentile(datas,1)
             upper = np.percentile(datas,99)
@@ -182,15 +182,11 @@ check_thread.start()
 # 创建应用实体
 handlers = [(evt.EVT_C_STORE, handle_store)]
 ae = AE(ae_title=b'Color')
-ae.add_supported_context(MRImageStorage)
-ae.add_supported_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
-ae.add_requested_context(MRImageStorage)
-ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
-ae.add_supported_context(CTImageStorage)
-ae.add_supported_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
-ae.add_requested_context(CTImageStorage)
-ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
+for context in StoragePresentationContexts:
+    ae.add_supported_context(context.abstract_syntax, ALL_TRANSFER_SYNTAXES)
+    ae.add_requested_context(context.abstract_syntax, ALL_TRANSFER_SYNTAXES)
 
 
 # 启动服务器
 ae.start_server(('172.20.99.71', 11113), evt_handlers=handlers)
+

@@ -1,6 +1,8 @@
 import pydicom,logging,numpy as np
 from skimage.transform import resize
-from pynetdicom import AE, evt, StoragePresentationContexts
+from pynetdicom import AE,evt,debug_logger,StoragePresentationContexts,ALL_TRANSFER_SYNTAXES
+
+#debug_logger()
 
 logging.basicConfig(
     filename='/home/edu/Color/color.log',
@@ -79,6 +81,7 @@ def rgb(ds):
     grey_data = (normalized_data * 1274).astype(np.uint16)
     rgb_data = p(grey_data).astype(np.uint8)
     
+    logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
     if 'RescaleIntercept' in ds:
         ds.RescaleIntercept = 0
     ds.PhotometricInterpretation = 'RGB'
@@ -99,10 +102,9 @@ def rgb(ds):
         if tag.group % 2 == 1 or tag in PaletteTag :
             del ds[tag]'''
     
-    logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
-    
-    #assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
-    assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
+    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
+    #assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
+    #assoc = ae.associate('172.20.99.71', 11111, ae_title=b'SCP')
     if assoc.is_established:
         status = assoc.send_c_store(ds)
         assoc.release()
@@ -120,7 +122,7 @@ def handle_store(event):
 handlers = [(evt.EVT_C_STORE, handle_store)]
 ae = AE(ae_title=b'Color')
 for context in StoragePresentationContexts:
-    ae.add_supported_context(context.abstract_syntax)
-    ae.add_requested_context(context.abstract_syntax)
+    ae.add_supported_context(context.abstract_syntax, ALL_TRANSFER_SYNTAXES)
+    ae.add_requested_context(context.abstract_syntax, ALL_TRANSFER_SYNTAXES)
 
 ae.start_server(('', 11113), block=True, evt_handlers=handlers)
