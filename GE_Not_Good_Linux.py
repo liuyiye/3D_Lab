@@ -140,7 +140,7 @@ def check_series():
             try:images = ds.ImagesInAcquisition # 有些序列没有这个tag
             except:images = 0
             n=len(series_files)
-            if n>9 and (n==images or n==image_count_in_series(ds.PatientID,ds.SeriesInstanceUID)):
+            if n>9 and (n==images or n==image_count_in_series(ds.PatientID,series_dir)):
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} transfer complete, forwarding...')
                 if t3237(series_path) or ds.SeriesDescription.startswith('3D_Lab'):
                     now = datetime.now()

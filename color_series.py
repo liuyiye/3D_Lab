@@ -28,8 +28,9 @@ def p(x):
 
 def color(series_dir):
     dicom_files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)]
-    if pydicom.dcmread(dicom_files[0]).Modality == 'MR':
-        datas = np.array([pydicom.dcmread(file).pixel_array for file in dicom_files])
+    datas = np.array([pydicom.dcmread(file).pixel_array for file in dicom_files])
+    datas1,datas97,datas98,datas99 = np.percentile(datas,[1,97,98,99])
+    
     siuid=pydicom.uid.generate_uid()
     for file in dicom_files:
         ds=pydicom.dcmread(file)
@@ -48,18 +49,19 @@ def color(series_dir):
                 WindowCenter,WindowWidth = ds.WindowCenter[0],ds.WindowWidth[0]
             except:
                 WindowCenter,WindowWidth = ds.WindowCenter,ds.WindowWidth
-            pixel_data = pixel_data + ds.RescaleIntercept
-            lower = WindowCenter - WindowWidth / 2
-            upper = WindowCenter + WindowWidth / 2
+            d = ds.RescaleIntercept
+            pixel_data = pixel_data + d
+            lower = max(WindowCenter - WindowWidth / 2, datas1 + d)
+            upper = min(WindowCenter + WindowWidth / 2, datas99 + d)
         elif 'ttp' in ds.SeriesDescription.lower():
-            lower = np.percentile(datas,1)
-            upper = np.percentile(datas,97)
+            lower = datas1
+            upper = datas97
         elif 'mtt' in ds.SeriesDescription.lower():
-            lower = np.percentile(datas,1)
-            upper = np.percentile(datas,98)
+            lower = datas1
+            upper = datas98
         else:
-            lower = np.percentile(datas,1)
-            upper = np.percentile(datas,99)
+            lower = datas1
+            upper = datas99
         
         if lower==upper:
             upper += 1

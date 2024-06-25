@@ -1,8 +1,8 @@
 import os,pydicom,numpy as np
 from skimage.transform import resize
 
-dicom_folder = r'C:\0'
-dst_folder = r'C:\1'
+dicom_folder = '/home/edu/0'
+dst_folder = '/home/edu/1'
 if not os.path.exists(dst_folder):
     os.makedirs(dst_folder)
 
@@ -28,7 +28,7 @@ for root, dirs, files in os.walk(dst_folder):
     for d in dirs:
         dicom_files = [os.path.join(root,d,f) for f in os.listdir(os.path.join(root,d))]
         datas = np.array([pydicom.dcmread(file).pixel_array for file in dicom_files])
-        
+        datas1,datas97,datas98,datas99 = np.percentile(datas,[1,97,98,99])
         for file in dicom_files:
             ds=pydicom.dcmread(file)
             if ds.PhotometricInterpretation == 'RGB':
@@ -46,18 +46,19 @@ for root, dirs, files in os.walk(dst_folder):
                     WindowCenter,WindowWidth = ds.WindowCenter[0],ds.WindowWidth[0]
                 except:
                     WindowCenter,WindowWidth = ds.WindowCenter,ds.WindowWidth
-                pixel_data = pixel_data + ds.RescaleIntercept
-                lower = WindowCenter - WindowWidth / 2
-                upper = WindowCenter + WindowWidth / 2
+                d = ds.RescaleIntercept
+                pixel_data = pixel_data + d
+                lower = max(WindowCenter - WindowWidth / 2, datas1 + d)
+                upper = min(WindowCenter + WindowWidth / 2, datas99 + d)
             elif 'ttp' in ds.SeriesDescription.lower():
-                lower = np.percentile(datas,1)
-                upper = np.percentile(datas,97)
+                lower = datas1
+                upper = datas97
             elif 'mtt' in ds.SeriesDescription.lower():
-                lower = np.percentile(datas,1)
-                upper = np.percentile(datas,98)
+                lower = datas1
+                upper = datas98
             else:
-                lower = np.percentile(datas,1)
-                upper = np.percentile(datas,99)
+                lower = datas1
+                upper = datas99
             
             if lower==upper:
                 upper += 1

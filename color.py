@@ -49,8 +49,8 @@ def rgb(ds):
         except:
             WindowCenter,WindowWidth = ds.WindowCenter,ds.WindowWidth
         pixel_data = pixel_data + ds.RescaleIntercept
-        lower = WindowCenter - WindowWidth / 2
-        upper = WindowCenter + WindowWidth / 2
+        lower = max(WindowCenter - WindowWidth / 2, np.percentile(pixel_data,1))
+        upper = min(WindowCenter + WindowWidth / 2, np.percentile(pixel_data,99))
     elif 'ttp' in ds.SeriesDescription.lower():
         lower = np.percentile(pixel_data,1)
         upper = np.percentile(pixel_data,97)
