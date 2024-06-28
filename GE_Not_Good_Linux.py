@@ -1,4 +1,4 @@
-import os,csv,time,shutil,pydicom,logging,threading,numpy as np
+import os,csv,time,shutil,pydicom,logging,threading,random,numpy as np
 from datetime import datetime
 from pynetdicom import (AE, evt)
 from pynetdicom.sop_class import MRImageStorage,PatientRootQueryRetrieveInformationModelFind
@@ -132,7 +132,9 @@ def image_count_in_series(PID,SUID):
 # 检查序列是否完整
 def check_series():
     global received_series
-    for series_dir in os.listdir(STORAGE_DIR):
+    series_dirs = os.listdir(STORAGE_DIR)
+    random.shuffle(series_dirs)
+    for series_dir in series_dirs:
         series_path = os.path.join(STORAGE_DIR, series_dir)
         series_files = os.listdir(series_path)
         if series_files:

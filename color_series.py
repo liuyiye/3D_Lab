@@ -1,4 +1,4 @@
-import os,csv,time,shutil,pydicom,logging,threading,numpy as np
+import os,csv,time,shutil,pydicom,logging,threading,random,numpy as np
 from datetime import datetime
 from skimage.transform import resize
 from pynetdicom import AE, evt
@@ -34,57 +34,56 @@ def color(series_dir):
     siuid=pydicom.uid.generate_uid()
     for file in dicom_files:
         ds=pydicom.dcmread(file)
-        if ds.PhotometricInterpretation == 'RGB':
-            break
-        pixel_data = ds.pixel_array
-        
-        if min(ds.Rows,ds.Columns) < 256:
-            normalized_data = pixel_data / np.max(pixel_data)
-            resized_data = resize(normalized_data, (2*ds.Rows, 2*ds.Columns), mode='reflect', anti_aliasing=True)
-            pixel_data = (resized_data * np.max(pixel_data)).astype(np.uint16)
-            ds.Rows, ds.Columns = pixel_data.shape
-        
-        if ds.Modality == 'CT':
-            try:
-                WindowCenter,WindowWidth = ds.WindowCenter[0],ds.WindowWidth[0]
-            except:
-                WindowCenter,WindowWidth = ds.WindowCenter,ds.WindowWidth
-            d = ds.RescaleIntercept
-            pixel_data = pixel_data + d
-            lower = max(WindowCenter - WindowWidth / 2, datas1 + d)
-            upper = min(WindowCenter + WindowWidth / 2, datas99 + d)
-        elif 'ttp' in ds.SeriesDescription.lower():
-            lower = datas1
-            upper = datas97
-        elif 'mtt' in ds.SeriesDescription.lower():
-            lower = datas1
-            upper = datas98
-        else:
-            lower = datas1
-            upper = datas99
-        
-        if lower==upper:
-            upper += 1
-        normalized_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
-        grey_data = (normalized_data * 1274).astype(np.uint16)
-        rgb_data = p(grey_data).astype(np.uint8)
-        
-        if 'RescaleIntercept' in ds:
-            ds.RescaleIntercept = 0
-        ds.PhotometricInterpretation = 'RGB'
-        ds.SamplesPerPixel = 3
-        ds.BitsAllocated = 8
-        ds.BitsStored = 8
-        ds.HighBit = 7
-        ds.PixelRepresentation = 0
-        ds.PixelData = rgb_data.tobytes()
-        ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
-        
-        ds.SOPInstanceUID = pydicom.uid.generate_uid()
-        ds.SeriesDescription = '3D_Lab_'+ds.SeriesDescription
-        ds.SeriesInstanceUID = siuid
-        
-        ds.save_as(file)
+        if ds.PhotometricInterpretation != 'RGB':
+            pixel_data = ds.pixel_array
+            
+            if min(ds.Rows,ds.Columns) < 256:
+                normalized_data = pixel_data / np.max(pixel_data)
+                resized_data = resize(normalized_data, (2*ds.Rows, 2*ds.Columns), mode='reflect', anti_aliasing=True)
+                pixel_data = (resized_data * np.max(pixel_data)).astype(np.uint16)
+                ds.Rows, ds.Columns = pixel_data.shape
+            
+            if ds.Modality == 'CT':
+                try:
+                    WindowCenter,WindowWidth = ds.WindowCenter[0],ds.WindowWidth[0]
+                except:
+                    WindowCenter,WindowWidth = ds.WindowCenter,ds.WindowWidth
+                d = ds.RescaleIntercept
+                pixel_data = pixel_data + d
+                lower = max(WindowCenter - WindowWidth / 2, datas1 + d)
+                upper = min(WindowCenter + WindowWidth / 2, datas99 + d)
+            elif 'ttp' in ds.SeriesDescription.lower():
+                lower = datas1
+                upper = datas97
+            elif 'mtt' in ds.SeriesDescription.lower():
+                lower = datas1
+                upper = datas98
+            else:
+                lower = datas1
+                upper = datas99
+            
+            if lower==upper:
+                upper += 1
+            normalized_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
+            grey_data = (normalized_data * 1274).astype(np.uint16)
+            rgb_data = p(grey_data).astype(np.uint8)
+            
+            if 'RescaleIntercept' in ds:
+                ds.RescaleIntercept = 0
+            ds.PhotometricInterpretation = 'RGB'
+            ds.SamplesPerPixel = 3
+            ds.BitsAllocated = 8
+            ds.BitsStored = 8
+            ds.HighBit = 7
+            ds.PixelRepresentation = 0
+            ds.PixelData = rgb_data.tobytes()
+            ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+            
+            ds.SOPInstanceUID = pydicom.uid.generate_uid()
+            ds.SeriesDescription = '3D_Lab_'+ds.SeriesDescription
+            ds.SeriesInstanceUID = siuid
+            
+            ds.save_as(file)
 
 
 # 接收图像
@@ -136,7 +135,9 @@ def image_count_in_series(PID,SUID):
 # 检查序列是否完整
 def check_series():
     global received_series
-    for series_dir in os.listdir(STORAGE_DIR):
+    series_dirs = os.listdir(STORAGE_DIR)
+    random.shuffle(series_dirs)
+    for series_dir in series_dirs:
         series_path = os.path.join(STORAGE_DIR, series_dir)
         series_files = os.listdir(series_path)
         if series_files:
