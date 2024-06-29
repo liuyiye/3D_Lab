@@ -27,13 +27,13 @@ def p(x):
 
 
 def color(series_dir):
-    dicom_files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)]
-    datas = np.array([pydicom.dcmread(file).pixel_array for file in dicom_files])
+    files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)]
+    datas = np.array([pydicom.dcmread(f).pixel_array for f in files])
     datas1,datas97,datas98,datas99 = np.percentile(datas,[1,97,98,99])
     
     siuid=pydicom.uid.generate_uid()
-    for file in dicom_files:
-        ds=pydicom.dcmread(file)
+    for f in files:
+        ds=pydicom.dcmread(f)
         if ds.PhotometricInterpretation != 'RGB':
             pixel_data = ds.pixel_array
             
@@ -83,7 +83,7 @@ def color(series_dir):
             ds.SeriesDescription = '3D_Lab_'+ds.SeriesDescription
             ds.SeriesInstanceUID = siuid
             
-            ds.save_as(file)
+            ds.save_as(f)
 
 
 # 接收图像
