@@ -1,9 +1,14 @@
 import os,csv,time,shutil,pydicom,logging,threading,random,numpy as np
 from datetime import datetime
 from skimage.transform import resize
-from pynetdicom import AE, evt
-from pynetdicom.sop_class import CTImageStorage,MRImageStorage,PatientRootQueryRetrieveInformationModelFind
+from pynetdicom import AE, evt, debug_logger
+from pynetdicom.sop_class import (
+    CTImageStorage,
+    MRImageStorage,
+    PatientRootQueryRetrieveInformationModelFind,
+    PatientRootQueryRetrieveInformationModelMove)
 
+#debug_logger()
 
 # 加载已传输图像的列表
 RECEIVED_SERIES_FILE = '/home/edu/Color/received_series.csv'
@@ -31,7 +36,8 @@ def color(series_dir):
     datas = np.array([pydicom.dcmread(f).pixel_array for f in files])
     datas1,datas97,datas98,datas99 = np.percentile(datas,[1,97,98,99])
     
-    siuid=pydicom.uid.generate_uid()
+    global siuid
+    siuid=pydicom.uid.generate_uid() # global用于move到old pacs
     for f in files:
         ds=pydicom.dcmread(f)
         if ds.PhotometricInterpretation != 'RGB':
@@ -153,6 +159,7 @@ def check_series():
                 series_info = [date_time, ds.PatientID, ds.StudyDate, ds.SeriesInstanceUID]
                 received_series.append(ds.SeriesInstanceUID)
                 if send_to_new_pacs(series_path):
+                    move_series_to_old_pacs(ds.PatientID,ds.StudyInstanceUID,siuid)
                     with open(RECEIVED_SERIES_FILE, 'a', newline='') as f:
                         writer = csv.writer(f)
                         writer.writerow(series_info)
@@ -170,6 +177,26 @@ def send_to_new_pacs(series_dir):
             status = assoc.send_c_store(ds)
         assoc.release()
         return True
+
+
+def move_series_to_old_pacs(PID,SDUID,SUID):
+    ae = AE(ae_title=b'C3D')
+    ae.add_requested_context(PatientRootQueryRetrieveInformationModelMove)
+    ae.connection_timeout=60
+    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
+    if assoc.is_established:
+        ds = pydicom.Dataset()
+        ds.PatientID = PID
+        ds.StudyInstanceUID = SDUID
+        ds.SeriesInstanceUID = SUID
+        ds.QueryRetrieveLevel = "SERIES"
+        responses = assoc.send_c_move(ds, 'SDM', PatientRootQueryRetrieveInformationModelMove)
+        for (status, identifier) in responses:
+            if status:
+                logging.warning(f'move to old pacs: 0x{status.Status:04x}')
+        assoc.release()
+    else:
+        logging.warning('Association rejected, aborted or never connected')
 
 
 # 创建应用实体
@@ -192,4 +219,3 @@ ae.start_server(('172.20.99.71', 11113), block=False, evt_handlers=handlers)
 while True:
     time.sleep(10)
     check_series()
-    

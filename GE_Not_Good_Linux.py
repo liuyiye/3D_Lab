@@ -1,8 +1,13 @@
 import os,csv,time,shutil,pydicom,logging,threading,random,numpy as np
 from datetime import datetime
-from pynetdicom import (AE, evt)
-from pynetdicom.sop_class import MRImageStorage,PatientRootQueryRetrieveInformationModelFind
+from pynetdicom import AE, evt, debug_logger
+from pynetdicom.sop_class import (
+    CTImageStorage,
+    MRImageStorage,
+    PatientRootQueryRetrieveInformationModelFind,
+    PatientRootQueryRetrieveInformationModelMove)
 
+#debug_logger()
 
 # 加载已传输图像的列表
 RECEIVED_SERIES_FILE = '/home/edu/GE_Not_Good/received_series.csv'
@@ -89,7 +94,8 @@ def t3237w(series_dir):
     a=np.array(position)
     a=np.round(np.linspace(a[0],a[-1],a[:,0].size),6)
     n=0
-    siuid=pydicom.uid.generate_uid()
+    global siuid
+    siuid=pydicom.uid.generate_uid() #global用于move到old pacs
     for file in files:
         ds=pydicom.dcmread(file)
         ds[0x00080018].value=pydicom.uid.generate_uid()
@@ -150,15 +156,13 @@ def check_series():
                     series_info = [date_time, ds.PatientID, ds.StudyDate, ds.SeriesInstanceUID]
                     received_series.append(ds.SeriesInstanceUID)
                     if forward_series(series_path):
+                        move_series_to_old_pacs(ds.PatientID,ds.StudyInstanceUID,siuid)
                         with open(RECEIVED_SERIES_FILE, 'a', newline='') as f:
                             writer = csv.writer(f)
                             writer.writerow(series_info)
                         complete_path = os.path.join(COMPLETE_DIR, series_dir)
                         shutil.move(series_path, complete_path)
                         logging.warning(f'all done')
-                        #print(f'{date_time} all done')
-                        #send_to_new_pacs(complete_path)
-                        #logging.warning(f'new pacs done')
                 else:
                     shutil.rmtree(series_path)
                     logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} t3237 right or None, removed')
@@ -180,14 +184,24 @@ def forward_series(series_dir):
         return False
 
 
-def send_to_new_pacs(series_dir):
+def move_series_to_old_pacs(PID,SDUID,SUID):
+    ae = AE(ae_title=b'C3D')
+    ae.add_requested_context(PatientRootQueryRetrieveInformationModelMove)
     ae.connection_timeout=60
     assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
     if assoc.is_established:
-        for file in os.listdir(series_dir):
-            ds = pydicom.dcmread(os.path.join(series_dir, file))
-            status = assoc.send_c_store(ds)
+        ds = pydicom.Dataset()
+        ds.PatientID = PID
+        ds.StudyInstanceUID = SDUID
+        ds.SeriesInstanceUID = SUID
+        ds.QueryRetrieveLevel = "SERIES"
+        responses = assoc.send_c_move(ds, 'SDM', PatientRootQueryRetrieveInformationModelMove)
+        for (status, identifier) in responses:
+            if status:
+                logging.warning(f'move to old pacs: 0x{status.Status:04x}')
         assoc.release()
+    else:
+        logging.warning('Association rejected, aborted or never connected')
 
 
 def check_series_thread():
