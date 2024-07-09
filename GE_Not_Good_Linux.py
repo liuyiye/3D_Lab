@@ -42,7 +42,7 @@ def handle_store(event):
         ds.save_as(file_path, write_like_original=False)
         return 0x0000
     else:
-        logging.warning(f'discarding image {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription}')
+        logging.warning(f'discarding image {ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.InstanceNumber,ds.SeriesDescription,ds.Manufacturer}')
         return 0x0000
 
 
