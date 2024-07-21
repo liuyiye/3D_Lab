@@ -1,12 +1,8 @@
-import os,csv,time,shutil,pydicom,logging,threading,random,numpy as np
+import os,csv,time,shutil,pydicom,logging,random,numpy as np
 from datetime import datetime
 from skimage.transform import resize
-from pynetdicom import AE, evt, debug_logger
-from pynetdicom.sop_class import (
-    CTImageStorage,
-    MRImageStorage,
-    PatientRootQueryRetrieveInformationModelFind,
-    PatientRootQueryRetrieveInformationModelMove)
+from pynetdicom import AE,evt,debug_logger
+from pynetdicom.sop_class import CTImageStorage,MRImageStorage,PatientRootQueryRetrieveInformationModelFind
 
 #debug_logger()
 
@@ -36,8 +32,7 @@ def color(series_dir):
     datas = np.array([pydicom.dcmread(f).pixel_array for f in files])
     datas1,datas97,datas98,datas99 = np.percentile(datas,[1,97,98,99])
     
-    global siuid
-    siuid=pydicom.uid.generate_uid() # global用于move到old pacs
+    siuid=pydicom.uid.generate_uid()
     for f in files:
         ds=pydicom.dcmread(f)
         if ds.PhotometricInterpretation != 'RGB':
@@ -158,45 +153,47 @@ def check_series():
                 date_time = now.strftime("%Y-%m-%d %H:%M:%S")
                 series_info = [date_time, ds.PatientID, ds.StudyDate, ds.SeriesInstanceUID]
                 received_series.append(ds.SeriesInstanceUID)
-                if send_to_new_pacs(series_path):
-                    move_series_to_old_pacs(ds.PatientID,ds.StudyInstanceUID,siuid)
+                if send_to_old_pacs(series_path):
+                    send_to_new_pacs(series_path)
                     with open(RECEIVED_SERIES_FILE, 'a', newline='') as f:
                         writer = csv.writer(f)
                         writer.writerow(series_info)
                     complete_path = os.path.join(COMPLETE_DIR, series_dir)
                     shutil.move(series_path, complete_path)
-                    logging.warning(f'series done')
+                    logging.warning(f'all done')
 
 
-def send_to_new_pacs(series_dir):
+def send_to_old_pacs(series_dir):
+    ae = AE(ae_title=b'C3D')
+    ae.add_requested_context(MRImageStorage)
+    ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
+    ae.add_requested_context(CTImageStorage)
+    ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
     ae.connection_timeout=60
-    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
+    assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
     if assoc.is_established:
-        for file in os.listdir(series_dir):
-            ds = pydicom.dcmread(os.path.join(series_dir, file))
+        for f in os.listdir(series_dir):
+            ds = pydicom.dcmread(os.path.join(series_dir, f))
             status = assoc.send_c_store(ds)
         assoc.release()
+        logging.warning(f'send to old pacs OK')
         return True
 
 
-def move_series_to_old_pacs(PID,SDUID,SUID):
+def send_to_new_pacs(series_dir):
     ae = AE(ae_title=b'C3D')
-    ae.add_requested_context(PatientRootQueryRetrieveInformationModelMove)
+    ae.add_requested_context(MRImageStorage)
+    ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
+    ae.add_requested_context(CTImageStorage)
+    ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
     ae.connection_timeout=60
     assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
     if assoc.is_established:
-        ds = pydicom.Dataset()
-        ds.PatientID = PID
-        ds.StudyInstanceUID = SDUID
-        ds.SeriesInstanceUID = SUID
-        ds.QueryRetrieveLevel = "SERIES"
-        responses = assoc.send_c_move(ds, 'SDM', PatientRootQueryRetrieveInformationModelMove)
-        for (status, identifier) in responses:
-            if status:
-                logging.warning(f'move to old pacs: 0x{status.Status:04x}')
+        for f in os.listdir(series_dir):
+            ds = pydicom.dcmread(os.path.join(series_dir, f))
+            status = assoc.send_c_store(ds)
         assoc.release()
-    else:
-        logging.warning('Association rejected, aborted or never connected')
+        logging.warning(f'send to new pacs OK')
 
 
 # 创建应用实体
@@ -204,12 +201,8 @@ handlers = [(evt.EVT_C_STORE, handle_store)]
 ae = AE(ae_title=b'Color')
 ae.add_supported_context(MRImageStorage)
 ae.add_supported_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
-ae.add_requested_context(MRImageStorage)
-ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
 ae.add_supported_context(CTImageStorage)
 ae.add_supported_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
-ae.add_requested_context(CTImageStorage)
-ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
 
 
 # 启动服务器
