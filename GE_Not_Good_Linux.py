@@ -1,11 +1,7 @@
-import os,csv,time,shutil,pydicom,logging,threading,random,numpy as np
+import os,csv,time,shutil,pydicom,logging,random,numpy as np
 from datetime import datetime
-from pynetdicom import AE, evt, debug_logger
-from pynetdicom.sop_class import (
-    CTImageStorage,
-    MRImageStorage,
-    PatientRootQueryRetrieveInformationModelFind,
-    PatientRootQueryRetrieveInformationModelMove)
+from pynetdicom import AE,evt,debug_logger
+from pynetdicom.sop_class import MRImageStorage,PatientRootQueryRetrieveInformationModelFind
 
 #debug_logger()
 
@@ -49,13 +45,13 @@ def handle_store(event):
 # 如果图像不能重建,返回True,函数缺省返回值为None
 def t3237(series_dir):
     files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)]
-    orientation=[pydicom.dcmread(file)[0x00200037].value for file in files]
+    orientation = [pydicom.dcmread(f)[0x00200037].value for f in files]
     if orientation[0] is None:return
     if len(set(map(tuple,orientation)))>1:   # map生成器表达式只能使用一次
         return True
     
     #判断哪个轴的差值最大，并按照该轴来排序
-    position=[pydicom.dcmread(file)[0x00200032].value for file in files]
+    position = [pydicom.dcmread(f)[0x00200032].value for f in files]
     if position[0] is None:return
     a=np.array(position)
     b=np.diff(a,axis=0)
@@ -75,7 +71,7 @@ def t3237w(series_dir):
     if pydicom.dcmread(files[0]).SeriesDescription.startswith('3D_Lab'):return
     
     #判断哪个轴的差值最大，并按照该轴来排序
-    position=[pydicom.dcmread(file)[0x00200032].value for file in files]
+    position = [pydicom.dcmread(f)[0x00200032].value for f in files]
     a=np.array(position)
     b=np.diff(a,axis=0)
     c=list(abs(b[0]))
@@ -89,15 +85,14 @@ def t3237w(series_dir):
     order = firstImg > lastImg
     
     files.sort(key=lambda x: pydicom.dcmread(x)[0x00200032].value[i],reverse=order)
-    position=[pydicom.dcmread(file)[0x00200032].value for file in files]
+    position = [pydicom.dcmread(f)[0x00200032].value for f in files]
     orientation=pydicom.dcmread(files[0])[0x00200037].value
     a=np.array(position)
     a=np.round(np.linspace(a[0],a[-1],a[:,0].size),6)
     n=0
-    global siuid
-    siuid=pydicom.uid.generate_uid() #global用于move到old pacs
-    for file in files:
-        ds=pydicom.dcmread(file)
+    siuid=pydicom.uid.generate_uid()
+    for f in files:
+        ds=pydicom.dcmread(f)
         ds[0x00080018].value=pydicom.uid.generate_uid()
         ds[0x0008103e].value='3D_Lab_'+ds[0x0008103e].value
         ds[0x0020000e].value=siuid
@@ -105,7 +100,7 @@ def t3237w(series_dir):
         ds[0x00200032].value=list(a[n])
         ds[0x00200037].value=orientation
         n=n+1
-        ds.save_as(file)
+        ds.save_as(f)
 
 
 def image_count_in_series(PID,SUID):
@@ -156,7 +151,7 @@ def check_series():
                     series_info = [date_time, ds.PatientID, ds.StudyDate, ds.SeriesInstanceUID]
                     received_series.append(ds.SeriesInstanceUID)
                     if forward_series(series_path):
-                        move_series_to_old_pacs(ds.PatientID,ds.StudyInstanceUID,siuid)
+                        send_to_new_pacs(series_path)
                         with open(RECEIVED_SERIES_FILE, 'a', newline='') as f:
                             writer = csv.writer(f)
                             writer.writerow(series_info)
@@ -170,49 +165,33 @@ def check_series():
 
 # 修正图像标签,转发图像序列
 def forward_series(series_dir):
+    ae = AE(ae_title=b'C3D')
+    ae.add_requested_context(MRImageStorage)
+    ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
     ae.connection_timeout=60
-    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
+    assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
     if assoc.is_established:
         t3237w(series_dir)
-        for file in os.listdir(series_dir):
-            ds = pydicom.dcmread(os.path.join(series_dir, file))
+        for f in os.listdir(series_dir):
+            ds = pydicom.dcmread(os.path.join(series_dir, f))
             status = assoc.send_c_store(ds)
         assoc.release()
+        logging.warning(f'send to old pacs OK')
         return True
-    else:
-        logging.error('Association rejected, unable to send images.')
-        return False
 
 
-def move_series_to_old_pacs(PID,SDUID,SUID):
+def send_to_new_pacs(series_dir):
     ae = AE(ae_title=b'C3D')
-    ae.add_requested_context(PatientRootQueryRetrieveInformationModelMove)
+    ae.add_requested_context(MRImageStorage)
+    ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
     ae.connection_timeout=60
     assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
     if assoc.is_established:
-        ds = pydicom.Dataset()
-        ds.PatientID = PID
-        ds.StudyInstanceUID = SDUID
-        ds.SeriesInstanceUID = SUID
-        ds.QueryRetrieveLevel = "SERIES"
-        responses = assoc.send_c_move(ds, 'SDM', PatientRootQueryRetrieveInformationModelMove)
-        for (status, identifier) in responses:
-            if status:
-                logging.warning(f'move to old pacs: 0x{status.Status:04x}')
+        for f in os.listdir(series_dir):
+            ds = pydicom.dcmread(os.path.join(series_dir, f))
+            status = assoc.send_c_store(ds)
         assoc.release()
-    else:
-        logging.warning('Association rejected, aborted or never connected')
-
-
-def check_series_thread():
-    while True:
-        time.sleep(10)
-        check_series()
-
-
-# 创建检查线程
-check_thread = threading.Thread(target=check_series_thread)
-check_thread.start()
+        logging.warning(f'send to new pacs OK')
 
 
 # 创建应用实体
@@ -220,10 +199,12 @@ handlers = [(evt.EVT_C_STORE, handle_store)]
 ae = AE(ae_title=b'GE_Not_Good')
 ae.add_supported_context(MRImageStorage)
 ae.add_supported_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
-ae.add_requested_context(MRImageStorage)
-ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
 
 
 # 启动服务器
-ae.start_server(('172.20.99.71', 11112), evt_handlers=handlers)
+ae.start_server(('172.20.99.71', 11112), block=False, evt_handlers=handlers)
 
+
+while True:
+    time.sleep(10)
+    check_series()
