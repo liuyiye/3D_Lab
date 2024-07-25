@@ -174,7 +174,14 @@ def send_to_old_pacs(series_dir):
     if assoc.is_established:
         for f in os.listdir(series_dir):
             ds = pydicom.dcmread(os.path.join(series_dir, f))
-            status = assoc.send_c_store(ds)
+            try:
+                status = assoc.send_c_store(ds)
+            except:
+                for elem in ds:
+                    if elem.tag.group%2 != 0:
+                        del ds[elem.tag]
+                status = assoc.send_c_store(ds)
+                logging.warning(f'del odd tags')
         assoc.release()
         logging.warning(f'send to old pacs OK')
         return True
@@ -191,7 +198,14 @@ def send_to_new_pacs(series_dir):
     if assoc.is_established:
         for f in os.listdir(series_dir):
             ds = pydicom.dcmread(os.path.join(series_dir, f))
-            status = assoc.send_c_store(ds)
+            try:
+                status = assoc.send_c_store(ds)
+            except:
+                for elem in ds:
+                    if elem.tag.group%2 != 0:
+                        del ds[elem.tag]
+                status = assoc.send_c_store(ds)
+                logging.warning(f'del odd tags')
         assoc.release()
         logging.warning(f'send to new pacs OK')
 
