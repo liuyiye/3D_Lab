@@ -93,12 +93,17 @@ def handle_store(event):
     ds.file_meta = event.file_meta
     series_instance_uid = ds.SeriesInstanceUID
     
-    if (ds.PhotometricInterpretation.startswith('MONO') and
+    if (ds.PhotometricInterpretation.startswith('MONO') and ds.Modality == 'MR' and
         series_instance_uid not in received_series ):
         
         series_dir = os.path.join(STORAGE_DIR, series_instance_uid)
         os.makedirs(series_dir, exist_ok=True)
         file_path = os.path.join(series_dir, f'{ds.SOPInstanceUID}.dcm')
+        
+        for elem in ds:
+            if elem.tag.group%2 != 0:
+                del ds[elem.tag]
+        
         ds.save_as(file_path, write_like_original=False)
         return 0x0000
     else:
@@ -126,7 +131,7 @@ def image_count_in_series(PID,SUID):
                 logging.error('Connection timed out, was aborted or received invalid response')
         
         # Release the association
-        logging.warning(f'image_count_in_series: {image_count}')
+        logging.warning(f'{PID} image_count_in_series: {image_count}')
         assoc.release()
         return(image_count)
     else:
@@ -160,7 +165,7 @@ def check_series():
                         writer.writerow(series_info)
                     complete_path = os.path.join(COMPLETE_DIR, series_dir)
                     shutil.move(series_path, complete_path)
-                    logging.warning(f'all done')
+                    logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} all done\n')
 
 
 def send_to_old_pacs(series_dir):
@@ -174,16 +179,9 @@ def send_to_old_pacs(series_dir):
     if assoc.is_established:
         for f in os.listdir(series_dir):
             ds = pydicom.dcmread(os.path.join(series_dir, f))
-            try:
-                status = assoc.send_c_store(ds)
-            except:
-                for elem in ds:
-                    if elem.tag.group%2 != 0:
-                        del ds[elem.tag]
-                status = assoc.send_c_store(ds)
-                logging.warning(f'del odd tags')
+            status = assoc.send_c_store(ds)
         assoc.release()
-        logging.warning(f'send to old pacs OK')
+        logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} send to old pacs OK')
         return True
 
 
@@ -198,16 +196,9 @@ def send_to_new_pacs(series_dir):
     if assoc.is_established:
         for f in os.listdir(series_dir):
             ds = pydicom.dcmread(os.path.join(series_dir, f))
-            try:
-                status = assoc.send_c_store(ds)
-            except:
-                for elem in ds:
-                    if elem.tag.group%2 != 0:
-                        del ds[elem.tag]
-                status = assoc.send_c_store(ds)
-                logging.warning(f'del odd tags')
+            status = assoc.send_c_store(ds)
         assoc.release()
-        logging.warning(f'send to new pacs OK')
+        logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} send to new pacs OK')
 
 
 # 创建应用实体

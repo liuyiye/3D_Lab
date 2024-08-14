@@ -157,10 +157,10 @@ def check_series():
                             writer.writerow(series_info)
                         complete_path = os.path.join(COMPLETE_DIR, series_dir)
                         shutil.move(series_path, complete_path)
-                        logging.warning(f'all done')
+                        logging.warning(f'{ds.PatientID} all done\n')
                 else:
                     shutil.rmtree(series_path)
-                    logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} t3237 right or None, removed')
+                    logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} t3237 right or None, removed\n')
 
 
 # 修正图像标签,转发图像序列
@@ -174,16 +174,9 @@ def forward_series(series_dir):
         t3237w(series_dir)
         for f in os.listdir(series_dir):
             ds = pydicom.dcmread(os.path.join(series_dir, f))
-            try:
-                status = assoc.send_c_store(ds)
-            except:
-                for elem in ds:
-                    if elem.tag.group%2 != 0:
-                        del ds[elem.tag]
-                status = assoc.send_c_store(ds)
-                logging.warning(f'del odd tags')
+            status = assoc.send_c_store(ds)
         assoc.release()
-        logging.warning(f'send to old pacs OK')
+        logging.warning(f'{ds.PatientID} send to old pacs OK')
         return True
 
 
@@ -196,16 +189,9 @@ def send_to_new_pacs(series_dir):
     if assoc.is_established:
         for f in os.listdir(series_dir):
             ds = pydicom.dcmread(os.path.join(series_dir, f))
-            try:
-                status = assoc.send_c_store(ds)
-            except:
-                for elem in ds:
-                    if elem.tag.group%2 != 0:
-                        del ds[elem.tag]
-                status = assoc.send_c_store(ds)
-                logging.warning(f'del odd tags')
+            status = assoc.send_c_store(ds)
         assoc.release()
-        logging.warning(f'send to new pacs OK')
+        logging.warning(f'{ds.PatientID} send to new pacs OK')
 
 
 # 创建应用实体
