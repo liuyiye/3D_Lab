@@ -29,8 +29,6 @@ def p(x):
 
 def color(series_dir):
     files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)]
-    datas = np.array([pydicom.dcmread(f).pixel_array for f in files])
-    
     siuid=pydicom.uid.generate_uid()
     for f in files:
         ds=pydicom.dcmread(f)
