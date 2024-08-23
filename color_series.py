@@ -30,13 +30,13 @@ def p(x):
 def color(series_dir):
     files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)]
     datas = np.array([pydicom.dcmread(f).pixel_array for f in files])
-    datas1,datas97,datas98,datas99 = np.percentile(datas,[1,97,98,99])
     
     siuid=pydicom.uid.generate_uid()
     for f in files:
         ds=pydicom.dcmread(f)
         if ds.PhotometricInterpretation != 'RGB':
             pixel_data = ds.pixel_array
+            datas1,datas97,datas98,datas99 = np.percentile(pixel_data,[1,97,98,99])
             
             if min(ds.Rows,ds.Columns) < 256:
                 normalized_data = pixel_data / np.max(pixel_data)
