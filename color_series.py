@@ -82,7 +82,7 @@ def color(series_dir):
             ds.SeriesDescription = '3D_Lab_'+ds.SeriesDescription
             ds.SeriesInstanceUID = siuid
             
-            ds.save_as(f)
+            ds.save_as(f, write_like_original=False)
 
 
 # 接收图像
@@ -97,11 +97,6 @@ def handle_store(event):
         series_dir = os.path.join(STORAGE_DIR, series_instance_uid)
         os.makedirs(series_dir, exist_ok=True)
         file_path = os.path.join(series_dir, f'{ds.SOPInstanceUID}.dcm')
-        
-        for elem in ds:
-            if elem.tag.group%2 != 0:
-                del ds[elem.tag]
-        
         ds.save_as(file_path, write_like_original=False)
         return 0x0000
     else:
@@ -166,7 +161,7 @@ def check_series():
                     logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} all done\n')
 
 
-def send_to_old_pacs(series_dir):
+def send_to_old_pacs(s_path):
     ae = AE(ae_title=b'C3D')
     ae.add_requested_context(MRImageStorage)
     ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
@@ -175,15 +170,15 @@ def send_to_old_pacs(series_dir):
     ae.connection_timeout=60
     assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
     if assoc.is_established:
-        for f in os.listdir(series_dir):
-            ds = pydicom.dcmread(os.path.join(series_dir, f))
+        for f in os.listdir(s_path):
+            ds = pydicom.dcmread(os.path.join(s_path, f))
             status = assoc.send_c_store(ds)
         assoc.release()
         logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} send to old pacs OK')
         return True
 
 
-def send_to_new_pacs(series_dir):
+def send_to_new_pacs(s_path):
     ae = AE(ae_title=b'C3D')
     ae.add_requested_context(MRImageStorage)
     ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
@@ -192,8 +187,8 @@ def send_to_new_pacs(series_dir):
     ae.connection_timeout=60
     assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
     if assoc.is_established:
-        for f in os.listdir(series_dir):
-            ds = pydicom.dcmread(os.path.join(series_dir, f))
+        for f in os.listdir(s_path):
+            ds = pydicom.dcmread(os.path.join(s_path, f))
             status = assoc.send_c_store(ds)
         assoc.release()
         logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} send to new pacs OK')
