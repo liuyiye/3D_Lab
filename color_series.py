@@ -69,7 +69,12 @@ def color(series_dir):
             
             if 'RescaleIntercept' in ds:
                 ds.RescaleIntercept = 0
+            
+            if (0x0088, 0x0200) in ds:
+                del ds[0x0088, 0x0200] #del icon
+            
             ds.PhotometricInterpretation = 'RGB'
+            ds.PlanarConfiguration = 0
             ds.SamplesPerPixel = 3
             ds.BitsAllocated = 8
             ds.BitsStored = 8
