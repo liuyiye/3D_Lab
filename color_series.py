@@ -2,7 +2,11 @@ import os,csv,time,shutil,pydicom,logging,random,numpy as np
 from datetime import datetime
 from skimage.transform import resize
 from pynetdicom import AE,evt,debug_logger
-from pynetdicom.sop_class import CTImageStorage,MRImageStorage,PatientRootQueryRetrieveInformationModelFind
+from pynetdicom.sop_class import (
+    CTImageStorage,
+    MRImageStorage,
+    PatientRootQueryRetrieveInformationModelFind,
+    PatientRootQueryRetrieveInformationModelMove)
 
 #debug_logger()
 
@@ -29,7 +33,8 @@ def p(x):
 
 def color(series_dir):
     files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)]
-    siuid=pydicom.uid.generate_uid()
+    global siuid
+    siuid=pydicom.uid.generate_uid() #global用于move到plaza
     for f in files:
         ds=pydicom.dcmread(f)
         if ds.PhotometricInterpretation != 'RGB':
@@ -156,8 +161,9 @@ def check_series():
                 date_time = now.strftime("%Y-%m-%d %H:%M:%S")
                 series_info = [date_time, ds.PatientID, ds.StudyDate, ds.SeriesInstanceUID]
                 received_series.append(ds.SeriesInstanceUID)
-                if send_to_old_pacs(series_path):
-                    send_to_new_pacs(series_path)
+                if send_to_new_pacs(series_path):
+                    move_series_to_plaza(ds.PatientID,ds.StudyInstanceUID,siuid)
+                    send_to_old_pacs(series_path)
                     with open(RECEIVED_SERIES_FILE, 'a', newline='') as f:
                         writer = csv.writer(f)
                         writer.writerow(series_info)
@@ -180,7 +186,6 @@ def send_to_old_pacs(s_path):
             status = assoc.send_c_store(ds)
         assoc.release()
         logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} send to old pacs OK')
-        return True
 
 
 def send_to_new_pacs(s_path):
@@ -197,6 +202,27 @@ def send_to_new_pacs(s_path):
             status = assoc.send_c_store(ds)
         assoc.release()
         logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} send to new pacs OK')
+        return True
+
+
+def move_series_to_plaza(PID,SDUID,SUID):
+    ae = AE(ae_title=b'C3D')
+    ae.add_requested_context(PatientRootQueryRetrieveInformationModelMove)
+    ae.connection_timeout=60
+    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
+    if assoc.is_established:
+        ds = pydicom.Dataset()
+        ds.PatientID = PID
+        ds.StudyInstanceUID = SDUID
+        ds.SeriesInstanceUID = SUID
+        ds.QueryRetrieveLevel = "SERIES"
+        responses = assoc.send_c_move(ds, 'PLAZAAPP1', PatientRootQueryRetrieveInformationModelMove)
+        for (status, identifier) in responses:
+            if status:
+                logging.warning(f'plaza: 0x{status.Status:04x}')
+        assoc.release()
+    else:
+        logging.warning('Association rejected, aborted or never connected')
 
 
 # 创建应用实体
