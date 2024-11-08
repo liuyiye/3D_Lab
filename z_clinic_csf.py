@@ -66,6 +66,26 @@ def mask154to22(mask):
     return(new)
 
 
+def orient(node):
+    import vtk
+
+    m = vtk.vtkMatrix4x4()
+    node.GetIJKToRASMatrix(m)
+
+    k_direction = [m.GetElement(0,2),m.GetElement(1,2),m.GetElement(2,2)]
+
+    max_index = np.argmax(np.abs(k_direction))
+
+    if max_index == 0:
+        orientation = '矢状位'
+    elif max_index == 2:
+        orientation = '轴位'
+    else:
+        orientation = '冠状位'
+
+    return orientation
+
+
 #main()白质高信号定量
 def w():
     brain_lobe= {
@@ -128,6 +148,7 @@ def w():
     }
     
     volumeNode = slicer.util.getNode("lesion_L01")
+    orientation = orient(volumeNode)
     outputVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLScalarVolumeNode", "lesion_L01_111")
     
     parameters = {}
@@ -211,7 +232,7 @@ def w():
         for i in flair_sorted:
             print(f"{round(flair_volume_all[i]/1000,3)}立方厘米")      
     
-    print(f"\n最大病灶的主体位于{brain_lobe[max3[0][0]]}，轴位图像上长度为{max_flair_area[0]}厘米，宽度为{max_flair_area[1]}厘米，其最大三维长径为{max_flair_3d[0]}厘米，对应的宽度为{max_flair_3d[1]}厘米，高度为{max_flair_3d[2]}厘米")
+    print(f"\n最大病灶的主体位于{brain_lobe[max3[0][0]]}，{orientation}图像上长度为{max_flair_area[0]}厘米，宽度为{max_flair_area[1]}厘米，其最大三维长径为{max_flair_3d[0]}厘米，对应的宽度为{max_flair_3d[1]}厘米，高度为{max_flair_3d[2]}厘米")
     
     print(f"\n{brain_lobe[max2[0][0]]}内的白质病灶总体积最大，为{round(max2[0][1]/1000,3)}立方厘米\n")
 
