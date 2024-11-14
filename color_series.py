@@ -95,6 +95,13 @@ def color(series_dir):
             ds.save_as(f, write_like_original=False)
 
 
+def pwi(text):
+    text = text.lower()
+    keywords = ['cbv','cbf','mtt','ttp']
+    if any(word in text for word in keywords):
+        return True
+
+
 # 接收图像
 def handle_store(event):
     ds = event.dataset
@@ -102,7 +109,7 @@ def handle_store(event):
     series_instance_uid = ds.SeriesInstanceUID
     
     if (ds.PhotometricInterpretation.startswith('MONO') and ds.Modality == 'MR' and
-        series_instance_uid not in received_series ):
+        series_instance_uid not in received_series and pwi(ds.SeriesDescription)):
         
         series_dir = os.path.join(STORAGE_DIR, series_instance_uid)
         os.makedirs(series_dir, exist_ok=True)
