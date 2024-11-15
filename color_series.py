@@ -161,7 +161,7 @@ def check_series():
             try:images = ds.ImagesInAcquisition # 有些序列没有这个tag
             except:images = 0
             n=len(series_files)
-            if n==images or n==image_count_in_series(ds.PatientID,series_dir):
+            if n < 32 and (n==images or n==image_count_in_series(ds.PatientID,series_dir)):
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} transfer complete, forwarding...')
                 color(series_path)
                 now = datetime.now()
