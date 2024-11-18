@@ -1,7 +1,7 @@
 import os,csv,time,shutil,pydicom,logging,random,numpy as np
 from datetime import datetime
 from pynetdicom import AE,evt,debug_logger
-from pynetdicom.sop_class import MRImageStorage,PatientRootQueryRetrieveInformationModelFind
+from pynetdicom.sop_class import MRImageStorage,PatientRootQueryRetrieveInformationModelFind,PatientRootQueryRetrieveInformationModelMove
 
 #debug_logger()
 
