@@ -90,7 +90,8 @@ def t3237w(series_dir):
     a=np.array(position)
     a=np.round(np.linspace(a[0],a[-1],a[:,0].size),6)
     n=0
-    siuid=pydicom.uid.generate_uid()
+    global siuid
+    siuid=pydicom.uid.generate_uid() #global用于move到plaza
     for f in files:
         ds=pydicom.dcmread(f)
         ds[0x00080018].value=pydicom.uid.generate_uid()
@@ -151,7 +152,8 @@ def check_series():
                     series_info = [date_time, ds.PatientID, ds.StudyDate, ds.SeriesInstanceUID]
                     received_series.append(ds.SeriesInstanceUID)
                     if forward_series(series_path):
-                        send_to_new_pacs(series_path)
+                        move_series_to_plaza(ds.PatientID,ds.StudyInstanceUID,siuid)
+                        send_to_old_pacs(series_path)
                         with open(RECEIVED_SERIES_FILE, 'a', newline='') as f:
                             writer = csv.writer(f)
                             writer.writerow(series_info)
@@ -169,29 +171,49 @@ def forward_series(series_dir):
     ae.add_requested_context(MRImageStorage)
     ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
     ae.connection_timeout=60
-    assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
+    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
     if assoc.is_established:
         t3237w(series_dir)
         for f in os.listdir(series_dir):
             ds = pydicom.dcmread(os.path.join(series_dir, f))
             status = assoc.send_c_store(ds)
         assoc.release()
-        logging.warning(f'{ds.PatientID} send to old pacs OK')
+        logging.warning(f'{ds.PatientID} send to new pacs OK')
         return True
 
 
-def send_to_new_pacs(series_dir):
+def send_to_old_pacs(series_dir):
     ae = AE(ae_title=b'C3D')
     ae.add_requested_context(MRImageStorage)
     ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
     ae.connection_timeout=60
-    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
+    assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
     if assoc.is_established:
         for f in os.listdir(series_dir):
             ds = pydicom.dcmread(os.path.join(series_dir, f))
             status = assoc.send_c_store(ds)
         assoc.release()
-        logging.warning(f'{ds.PatientID} send to new pacs OK')
+        logging.warning(f'{ds.PatientID} send to old pacs OK')
+
+
+def move_series_to_plaza(PID,SDUID,SUID):
+    ae = AE(ae_title=b'C3D')
+    ae.add_requested_context(PatientRootQueryRetrieveInformationModelMove)
+    ae.connection_timeout=60
+    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
+    if assoc.is_established:
+        ds = pydicom.Dataset()
+        ds.PatientID = PID
+        ds.StudyInstanceUID = SDUID
+        ds.SeriesInstanceUID = SUID
+        ds.QueryRetrieveLevel = "SERIES"
+        responses = assoc.send_c_move(ds, 'PLAZAAPP1', PatientRootQueryRetrieveInformationModelMove)
+        for (status, identifier) in responses:
+            if status:
+                logging.warning(f'plaza: 0x{status.Status:04x}')
+        assoc.release()
+    else:
+        logging.warning('Association rejected, aborted or never connected')
 
 
 # 创建应用实体
