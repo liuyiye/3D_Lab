@@ -104,27 +104,26 @@ def t3237w(series_dir):
         ds.save_as(f)
 
 
-def image_count_in_series(PID,SUID):
+def image_count_in_series(ID,STUID,SUID):
     ds = pydicom.Dataset()
-    ds.PatientID = PID
+    ds.PatientID=ID
+    ds.StudyInstanceUID = STUID
     ds.SeriesInstanceUID = SUID
-    ds.QueryRetrieveLevel = "IMAGE"
+    ds.QueryRetrieveLevel = 'SERIES'
+    ds.NumberOfSeriesRelatedInstances = None
+    ds.SeriesDescription= None
     
     ae = AE(ae_title=b'C3D')
     ae.add_requested_context(PatientRootQueryRetrieveInformationModelFind)
     ae.connection_timeout=60
-    assoc = ae.associate('192.168.21.16',2002,ae_title=b'SDM')
-    image_count = -1
+    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
+    
     if assoc.is_established:
         responses = assoc.send_c_find(ds, PatientRootQueryRetrieveInformationModelFind)
-        for (status, ds) in responses:
-            if status:
-                image_count += 1
-            else:
-                logging.error('Connection timed out, was aborted or received invalid response')
-        
-        # Release the association
-        logging.warning(f'image_count_in_series: {image_count}')
+        for (status, identifier) in responses:
+            if identifier:
+                image_count = int(identifier.NumberOfSeriesRelatedInstances)
+                logging.warning(f'image_count_in_series_{identifier.SeriesDescription}: {image_count}')
         assoc.release()
         return(image_count)
     else:
@@ -144,7 +143,7 @@ def check_series():
             try:images = ds.ImagesInAcquisition # 有些序列没有这个tag
             except:images = 0
             n=len(series_files)
-            if n>9 and (n==images or n==image_count_in_series(ds.PatientID,series_dir)):
+            if n>9 and (n==images or n==image_count_in_series(ds.PatientID,ds.StudyInstanceUID,series_dir)):
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} transfer complete, forwarding...')
                 if t3237(series_path) or ds.SeriesDescription.startswith('3D_Lab'):
                     now = datetime.now()
