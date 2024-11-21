@@ -97,7 +97,7 @@ def color(series_dir):
 
 def pwi(text):
     text = text.lower()
-    keywords = ['cbv','cbf','mtt','ttp']
+    keywords = ['cbv','cbf','mtt','ttp','asl']
     if any(word in text for word in keywords):
         return True
 
@@ -121,27 +121,24 @@ def handle_store(event):
         return 0x0000
 
 
-def image_count_in_series(PID,SUID):
+def image_count_in_series(SUID):
     ds = pydicom.Dataset()
-    ds.PatientID = PID
     ds.SeriesInstanceUID = SUID
-    ds.QueryRetrieveLevel = "IMAGE"
+    ds.QueryRetrieveLevel = 'SERIES'
+    ds.NumberOfSeriesRelatedInstances = None
     
     ae = AE(ae_title=b'C3D')
     ae.add_requested_context(PatientRootQueryRetrieveInformationModelFind)
     ae.connection_timeout=60
-    assoc = ae.associate('192.168.21.16',2002,ae_title=b'SDM')
-    image_count = -1
+    assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
+
     if assoc.is_established:
         responses = assoc.send_c_find(ds, PatientRootQueryRetrieveInformationModelFind)
-        for (status, ds) in responses:
-            if status:
-                image_count += 1
-            else:
-                logging.error('Connection timed out, was aborted or received invalid response')
-        
-        # Release the association
-        logging.warning(f'{PID} image_count_in_series: {image_count}')
+        for (status, identifier) in responses:
+            if identifier:
+                image_count = int(identifier.NumberOfSeriesRelatedInstances)
+
+        logging.warning(f'image_count_in_series: {image_count}')
         assoc.release()
         return(image_count)
     else:
@@ -158,10 +155,13 @@ def check_series():
         series_files = os.listdir(series_path)
         if series_files:
             ds = pydicom.dcmread(os.path.join(series_path, series_files[0]))
-            try:images = ds.ImagesInAcquisition # 有些序列没有这个tag
-            except:images = 0
+            #try:images = ds.ImagesInAcquisition # 有些序列没有这个tag
+            #except:images = 0
             n=len(series_files)
-            if n < 32 and (n==images or n==image_count_in_series(ds.PatientID,series_dir)):
+            m=image_count_in_series(series_dir)
+            if m==0: #图像未发送到pacs
+                time.sleep(60)
+            if (n==m or m==0) and n < 36 and n > 16:
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} transfer complete, forwarding...')
                 color(series_path)
                 now = datetime.now()
