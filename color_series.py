@@ -121,24 +121,26 @@ def handle_store(event):
         return 0x0000
 
 
-def image_count_in_series(SUID):
+def image_count_in_series(ID,STUID,SUID):
     ds = pydicom.Dataset()
+    ds.PatientID=ID
+    ds.StudyInstanceUID = STUID
     ds.SeriesInstanceUID = SUID
     ds.QueryRetrieveLevel = 'SERIES'
     ds.NumberOfSeriesRelatedInstances = None
+    ds.SeriesDescription= None
     
     ae = AE(ae_title=b'C3D')
     ae.add_requested_context(PatientRootQueryRetrieveInformationModelFind)
     ae.connection_timeout=60
-    assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
+    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
 
     if assoc.is_established:
         responses = assoc.send_c_find(ds, PatientRootQueryRetrieveInformationModelFind)
         for (status, identifier) in responses:
             if identifier:
                 image_count = int(identifier.NumberOfSeriesRelatedInstances)
-
-        logging.warning(f'image_count_in_series: {image_count}')
+                logging.warning(f'image_count_in_series_{identifier.SeriesDescription}: {image_count}')
         assoc.release()
         return(image_count)
     else:
@@ -155,10 +157,8 @@ def check_series():
         series_files = os.listdir(series_path)
         if series_files:
             ds = pydicom.dcmread(os.path.join(series_path, series_files[0]))
-            #try:images = ds.ImagesInAcquisition # 有些序列没有这个tag
-            #except:images = 0
             n=len(series_files)
-            m=image_count_in_series(series_dir)
+            m=image_count_in_series(ds.PatientID,ds.StudyInstanceUID,series_dir)
             if m==0: #图像未发送到pacs
                 time.sleep(60)
             if (n==m or m==0) and n < 36 and n > 16:
