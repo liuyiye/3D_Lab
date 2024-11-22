@@ -152,7 +152,7 @@ def check_series():
                     received_series.append(ds.SeriesInstanceUID)
                     if forward_series(series_path):
                         move_series_to_plaza(ds.PatientID,ds.StudyInstanceUID,siuid)
-                        send_to_old_pacs(series_path)
+                        #send_to_old_pacs(series_path)
                         with open(RECEIVED_SERIES_FILE, 'a', newline='') as f:
                             writer = csv.writer(f)
                             writer.writerow(series_info)
