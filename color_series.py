@@ -161,6 +161,12 @@ def check_series():
             m=image_count_in_series(ds.PatientID,ds.StudyInstanceUID,series_dir)
             if m==0: #图像未发送到pacs
                 time.sleep(60)
+            if n>0 and n<m: #接收到的图像不全
+                time.sleep(60)
+                n=len(series_files)
+                if n<m:
+                    move_series_to_color(ds.PatientID,ds.StudyInstanceUID,ds.SeriesInstanceUID)
+                    n=len(series_files)
             if (n==m or m==0) and n < 36 and n > 16:
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} transfer complete, forwarding...')
                 color(series_path)
@@ -227,6 +233,26 @@ def move_series_to_plaza(PID,SDUID,SUID):
         for (status, identifier) in responses:
             if status:
                 logging.warning(f'plaza: 0x{status.Status:04x}')
+        assoc.release()
+    else:
+        logging.warning('Association rejected, aborted or never connected')
+
+
+def move_series_to_color(PID,SDUID,SUID):
+    ae = AE(ae_title=b'C3D')
+    ae.add_requested_context(PatientRootQueryRetrieveInformationModelMove)
+    ae.connection_timeout=60
+    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
+    if assoc.is_established:
+        ds = pydicom.Dataset()
+        ds.PatientID = PID
+        ds.StudyInstanceUID = SDUID
+        ds.SeriesInstanceUID = SUID
+        ds.QueryRetrieveLevel = "SERIES"
+        responses = assoc.send_c_move(ds, 'Color', PatientRootQueryRetrieveInformationModelMove)
+        for (status, identifier) in responses:
+            if status:
+                logging.warning(f'Color: 0x{status.Status:04x}')
         assoc.release()
     else:
         logging.warning('Association rejected, aborted or never connected')
