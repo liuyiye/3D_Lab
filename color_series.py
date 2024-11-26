@@ -158,15 +158,21 @@ def check_series():
         if series_files:
             ds = pydicom.dcmread(os.path.join(series_path, series_files[0]))
             n=len(series_files)
+            logging.warning(f'n1={n}')
             m=image_count_in_series(ds.PatientID,ds.StudyInstanceUID,series_dir)
             if m==0: #图像未发送到pacs
+                logging.warning(f'count=0')
                 time.sleep(60)
             if n>0 and n<m: #接收到的图像不全
                 time.sleep(60)
-                n=len(series_files)
+                n_files = os.listdir(series_path)
+                n=len(n_files)
+                logging.warning(f'n2={n}')
                 if n<m:
                     move_series_to_color(ds.PatientID,ds.StudyInstanceUID,ds.SeriesInstanceUID)
-                    n=len(series_files)
+                    n_files = os.listdir(series_path)
+                    n=len(n_files)
+                    logging.warning(f'n3={n}')
             if (n==m or m==0) and n < 36 and n > 16:
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} transfer complete, forwarding...')
                 color(series_path)
