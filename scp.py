@@ -1,4 +1,4 @@
-import os,pydicom
+import os,re,pydicom
 from pynetdicom import AE, evt, AllStoragePresentationContexts
 
 store_folder=r'D:\SCP'
@@ -6,7 +6,12 @@ store_folder=r'D:\SCP'
 def handle_store(event):
     ds = event.dataset
     ds.file_meta = event.file_meta
-    pdir = os.path.join(store_folder, ds.PatientID)
+    try:
+        sn=f'{ds.SeriesNumber}_{ds.SeriesDescription}'
+        sn = re.sub(r'[<>:"/\\|?*]', '_', sn)
+    except:
+        sn=None
+    pdir = os.path.join(store_folder,ds.PatientID,sn)
     f = os.path.join(pdir, f'{ds.SOPInstanceUID}.dcm')
     os.makedirs(pdir, exist_ok=True)
     ds.save_as(f, write_like_original=False)
