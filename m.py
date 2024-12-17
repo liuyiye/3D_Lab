@@ -126,7 +126,6 @@ while True:
 
   elif choice == 2:
     send()
-    print('\n\nsend completed.')
   
   else:
     print("输入的序号有误")
