@@ -29,6 +29,9 @@ def convert():
     ds.SliceLocation=''
     ds.ImagePositionPatient=''
     ds.ImageOrientationPatient=''
+    for elem in ds:
+        if elem.tag.group%2 != 0:
+            del ds[elem.tag]
 
     for current_dir, dirs, files in os.walk(root_dir):
         n = 1
