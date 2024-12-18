@@ -1,11 +1,12 @@
 import os,msvcrt,pydicom,numpy as np
 from PIL import Image
-from pynetdicom import AE
+from pynetdicom import AE,debug_logger
 from pynetdicom.sop_class import (
     CTImageStorage,
     MRImageStorage,
     PatientRootQueryRetrieveInformationModelMove)
 
+#debug_logger()
 root_dir='.'
 output_root = os.path.join(root_dir, "dicom_output")
 supported_extensions = ['.jpg', '.jpeg', '.png']
@@ -123,8 +124,12 @@ def send():
     if assoc.is_established:
         for root, dirs, files in os.walk(output_root):
             for f in files:
-                ds=pydicom.dcmread(os.path.join(root, f))
-                assoc.send_c_store(ds)
+                data=pydicom.dcmread(os.path.join(root, f))
+                assoc.send_c_store(data)
+            ds = pydicom.Dataset()
+            ds.PatientID = data.PatientID
+            ds.StudyInstanceUID = data.StudyInstanceUID
+            ds.SeriesInstanceUID = data.SeriesInstanceUID
             ds.QueryRetrieveLevel = "SERIES"
             assoc.send_c_move(ds, 'PLAZAAPP1', PatientRootQueryRetrieveInformationModelMove)
         assoc.release()
