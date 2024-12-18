@@ -21,18 +21,40 @@ def dcm():
     print('\nNo DICOM file!!!')
 
 def convert():
-    ds = dcm()
-    try:ds.file_meta.TransferSyntaxUID='1.2.840.10008.1.2.1'
-    except:return
+    data = dcm()
+    if data == None:
+        return
+    ds = pydicom.Dataset()
+    ds.file_meta = pydicom.Dataset()
+    
+    ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+    ds.SOPClassUID = data.SOPClassUID
+    
+    ds.PatientID = data.PatientID
+    ds.StudyInstanceUID = data.StudyInstanceUID
+    ds.PatientName = data.PatientName
+    ds.StudyDate = data.StudyDate
+    ds.StudyTime = data.StudyTime
+    ds.ContentDate = data.ContentDate
+    ds.ContentTime = data.ContentTime
+    ds.AccessionNumber = data.AccessionNumber
+    ds.Modality = data.Modality
+    ds.SeriesNumber = data.SeriesNumber
+    ds.PatientBirthDate = data.PatientBirthDate
+    ds.ReferringPhysicianName = data.ReferringPhysicianName
+    ds.PatientSex = data.PatientSex
+    
     ds.SeriesDescription='3D_Lab'
-    ds.SeriesNumber=''
     ds.SliceLocation=''
-    ds.ImagePositionPatient=''
-    ds.ImageOrientationPatient=''
-    for elem in ds:
-        if elem.tag.group%2 != 0:
-            del ds[elem.tag]
-
+    ds.ImagePositionPatient = ''
+    ds.ImageOrientationPatient = ''
+    ds.NumberOfFrames = ''
+    ds.PixelSpacing = ''
+    ds.WindowCenter = ''
+    ds.WindowWidth = ''
+    ds.RescaleSlope = ''
+    ds.RescaleType = ''
+    
     for current_dir, dirs, files in os.walk(root_dir):
         n = 1
         siuid=pydicom.uid.generate_uid()
