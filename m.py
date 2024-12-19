@@ -1,10 +1,7 @@
 import os,msvcrt,pydicom,numpy as np
 from PIL import Image
 from pynetdicom import AE,debug_logger
-from pynetdicom.sop_class import (
-    CTImageStorage,
-    MRImageStorage,
-    PatientRootQueryRetrieveInformationModelMove)
+from pynetdicom.sop_class import CTImageStorage,MRImageStorage
 
 #debug_logger()
 root_dir='.'
@@ -115,24 +112,50 @@ def convert():
     print('****************************************')
     
 def send():
-    ae = AE(ae_title=b'C3D')
+    ae = AE(ae_title=b'SDM')
     ae.add_requested_context(MRImageStorage)
     ae.add_requested_context(CTImageStorage)
-    ae.add_requested_context(PatientRootQueryRetrieveInformationModelMove)
+    ae.connection_timeout=60
+    assoc = ae.associate('192.168.21.114', 104, ae_title=b'PLAZAAPP1')
+    if assoc.is_established:
+        for root, dirs, files in os.walk(output_root):
+            for f in files:
+                ds=pydicom.dcmread(os.path.join(root, f))
+                assoc.send_c_store(ds)
+        try:id = ds.PatientID
+        except:id = None
+        assoc.release()
+        print(f'\n{id} 1P')
+    
+    ae = AE(ae_title=b'SDM')
+    ae.add_requested_context(MRImageStorage)
+    ae.add_requested_context(CTImageStorage)
     ae.connection_timeout=60
     assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
     if assoc.is_established:
         for root, dirs, files in os.walk(output_root):
             for f in files:
-                data=pydicom.dcmread(os.path.join(root, f))
-                assoc.send_c_store(data)
-            ds = pydicom.Dataset()
-            ds.PatientID = data.PatientID
-            ds.StudyInstanceUID = data.StudyInstanceUID
-            ds.SeriesInstanceUID = data.SeriesInstanceUID
-            ds.QueryRetrieveLevel = "SERIES"
-            assoc.send_c_move(ds, 'PLAZAAPP1', PatientRootQueryRetrieveInformationModelMove)
+                ds=pydicom.dcmread(os.path.join(root, f))
+                assoc.send_c_store(ds)
+        try:id = ds.PatientID
+        except:id = None
         assoc.release()
+        print(f'{id} 2C')
+    
+    ae = AE(ae_title=b'SDM')
+    ae.add_requested_context(MRImageStorage)
+    ae.add_requested_context(CTImageStorage)
+    ae.connection_timeout=60
+    assoc = ae.associate('172.21.253.62', 30966, ae_title=b'UIHHXZS66')
+    if assoc.is_established:
+        for root, dirs, files in os.walk(output_root):
+            for f in files:
+                ds=pydicom.dcmread(os.path.join(root, f))
+                assoc.send_c_store(ds)
+        try:id = ds.PatientID
+        except:id = None
+        assoc.release()
+        print(f'{id} 3U')
 
 while True:
   password = ''
