@@ -97,7 +97,7 @@ def color(series_dir):
 
 def pwi(text):
     text = text.lower()
-    keywords = ['cbv','cbf','mtt','ttp','asl']
+    keywords = ['cbv','cbf','mtt','ttp','asl','pbp']
     if any(word in text for word in keywords):
         return True
 
@@ -159,7 +159,8 @@ def check_series():
             ds = pydicom.dcmread(os.path.join(series_path, series_files[0]))
             n=len(series_files)
             logging.warning(f'n1={n}')
-            m=image_count_in_series(ds.PatientID,ds.StudyInstanceUID,series_dir)
+            try:m = image_count_in_series(ds.PatientID,ds.StudyInstanceUID,series_dir)
+            except:m = 0
             if m==0: #图像未发送到pacs
                 logging.warning(f'count=0')
                 time.sleep(60)
@@ -180,9 +181,9 @@ def check_series():
                 date_time = now.strftime("%Y-%m-%d %H:%M:%S")
                 series_info = [date_time, ds.PatientID, ds.StudyDate, ds.SeriesInstanceUID]
                 received_series.append(ds.SeriesInstanceUID)
-                if send_to_new_pacs(series_path):
-                    move_series_to_plaza(ds.PatientID,ds.StudyInstanceUID,siuid)
-                    #send_to_old_pacs(series_path)
+                if send_to_plaza(series_path):
+                    send_to_carbon(series_path)
+                    send_to_uih(series_path)
                     with open(RECEIVED_SERIES_FILE, 'a', newline='') as f:
                         writer = csv.writer(f)
                         writer.writerow(series_info)
@@ -191,24 +192,25 @@ def check_series():
                     logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} all done\n')
 
 
-def send_to_old_pacs(s_path):
-    ae = AE(ae_title=b'C3D')
+def send_to_plaza(s_path):
+    ae = AE(ae_title=b'SDM')
     ae.add_requested_context(MRImageStorage)
     ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
     ae.add_requested_context(CTImageStorage)
     ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
     ae.connection_timeout=60
-    assoc = ae.associate('192.168.21.16', 2002, ae_title=b'SDM')
+    assoc = ae.associate('192.168.21.114', 104, ae_title=b'PLAZAAPP1')
     if assoc.is_established:
         for f in os.listdir(s_path):
             ds = pydicom.dcmread(os.path.join(s_path, f))
             status = assoc.send_c_store(ds)
         assoc.release()
-        logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} send to old pacs OK')
+        logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} send to PLAZA OK')
+        return True
 
 
-def send_to_new_pacs(s_path):
-    ae = AE(ae_title=b'C3D')
+def send_to_carbon(s_path):
+    ae = AE(ae_title=b'SDM')
     ae.add_requested_context(MRImageStorage)
     ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
     ae.add_requested_context(CTImageStorage)
@@ -220,8 +222,23 @@ def send_to_new_pacs(s_path):
             ds = pydicom.dcmread(os.path.join(s_path, f))
             status = assoc.send_c_store(ds)
         assoc.release()
-        logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} send to new pacs OK')
-        return True
+        logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} send to CARBON OK')
+
+
+def send_to_uih(s_path):
+    ae = AE(ae_title=b'SDM')
+    ae.add_requested_context(MRImageStorage)
+    ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
+    ae.add_requested_context(CTImageStorage)
+    ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
+    ae.connection_timeout=60
+    assoc = ae.associate('172.21.253.62', 30966, ae_title=b'UIHHXZS66')
+    if assoc.is_established:
+        for f in os.listdir(s_path):
+            ds = pydicom.dcmread(os.path.join(s_path, f))
+            status = assoc.send_c_store(ds)
+        assoc.release()
+        logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} send to UIH OK')
 
 
 def move_series_to_plaza(PID,SDUID,SUID):
