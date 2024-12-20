@@ -111,12 +111,12 @@ def convert():
     print('上述信息完全正确，才可发送到PACS！！！')
     print('****************************************')
     
-def send():
+def send(ip,port,aet,name):
     ae = AE(ae_title=b'SDM')
     ae.add_requested_context(MRImageStorage)
     ae.add_requested_context(CTImageStorage)
     ae.connection_timeout=60
-    assoc = ae.associate('192.168.21.114', 104, ae_title=b'PLAZAAPP1')
+    assoc = ae.associate(ip,port,ae_title=aet)
     if assoc.is_established:
         for root, dirs, files in os.walk(output_root):
             for f in files:
@@ -125,37 +125,7 @@ def send():
         try:id = ds.PatientID
         except:id = None
         assoc.release()
-        print(f'\n{id} 1P')
-    
-    ae = AE(ae_title=b'SDM')
-    ae.add_requested_context(MRImageStorage)
-    ae.add_requested_context(CTImageStorage)
-    ae.connection_timeout=60
-    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
-    if assoc.is_established:
-        for root, dirs, files in os.walk(output_root):
-            for f in files:
-                ds=pydicom.dcmread(os.path.join(root, f))
-                assoc.send_c_store(ds)
-        try:id = ds.PatientID
-        except:id = None
-        assoc.release()
-        print(f'{id} 2C')
-    
-    ae = AE(ae_title=b'SDM')
-    ae.add_requested_context(MRImageStorage)
-    ae.add_requested_context(CTImageStorage)
-    ae.connection_timeout=60
-    assoc = ae.associate('172.21.253.62', 30966, ae_title=b'UIHHXZS66')
-    if assoc.is_established:
-        for root, dirs, files in os.walk(output_root):
-            for f in files:
-                ds=pydicom.dcmread(os.path.join(root, f))
-                assoc.send_c_store(ds)
-        try:id = ds.PatientID
-        except:id = None
-        assoc.release()
-        print(f'{id} 3U')
+        print(f'\n{id} {name}')
 
 while True:
   password = ''
@@ -178,8 +148,10 @@ while True:
     convert()
 
   elif choice == 2:
-    send()
-  
+    send('192.168.21.114',104,'PLAZAAPP1','1P')
+    send('192.168.21.102',11101,'IDMAPP1','2C')
+    send('172.21.253.62',30966,'UIHHXZS66','3U')
+    
   else:
     print("输入的序号有误")
 
