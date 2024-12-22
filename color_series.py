@@ -33,8 +33,7 @@ def p(x):
 
 def color(series_dir):
     files = [os.path.join(series_dir, f) for f in os.listdir(series_dir)]
-    global siuid
-    siuid=pydicom.uid.generate_uid() #global用于move到plaza
+    siuid=pydicom.uid.generate_uid()
     for f in files:
         ds=pydicom.dcmread(f)
         if ds.PhotometricInterpretation != 'RGB':
@@ -71,12 +70,6 @@ def color(series_dir):
             normalized_data = np.clip((pixel_data - lower) / (upper - lower),0,1)
             grey_data = (normalized_data * 1274).astype(np.uint16)
             rgb_data = p(grey_data).astype(np.uint8)
-            
-            if 'RescaleIntercept' in ds:
-                ds.RescaleIntercept = 0
-            
-            if (0x0088, 0x0200) in ds:
-                del ds[0x0088, 0x0200] #del icon
             
             #构建一个精简的dataset，适配uih
             data = pydicom.Dataset()
@@ -213,9 +206,9 @@ def check_series():
                 date_time = now.strftime("%Y-%m-%d %H:%M:%S")
                 series_info = [date_time, ds.PatientID, ds.StudyDate, ds.SeriesInstanceUID]
                 received_series.append(ds.SeriesInstanceUID)
-                if send_to_plaza(series_path):
-                    send_to_carbon(series_path)
-                    send_to_uih(series_path)
+                if send(series_path,'192.168.21.114', 104, 'PLAZAAPP1'):
+                    send(series_path,'192.168.21.102', 11101, 'IDMAPP1')
+                    send(series_path,'172.21.253.62', 30966, 'UIHHXZS66')
                     with open(RECEIVED_SERIES_FILE, 'a', newline='') as f:
                         writer = csv.writer(f)
                         writer.writerow(series_info)
@@ -224,73 +217,21 @@ def check_series():
                     logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} all done\n')
 
 
-def send_to_plaza(s_path):
+def send(s_path,ip,port,aet):
     ae = AE(ae_title=b'SDM')
     ae.add_requested_context(MRImageStorage)
     ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
     ae.add_requested_context(CTImageStorage)
     ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
     ae.connection_timeout=60
-    assoc = ae.associate('192.168.21.114', 104, ae_title=b'PLAZAAPP1')
+    assoc = ae.associate(ip,port,ae_title=aet)
     if assoc.is_established:
         for f in os.listdir(s_path):
             ds = pydicom.dcmread(os.path.join(s_path, f))
             status = assoc.send_c_store(ds)
         assoc.release()
-        logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} send to PLAZA OK')
+        logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} send to {aet} OK')
         return True
-
-
-def send_to_carbon(s_path):
-    ae = AE(ae_title=b'SDM')
-    ae.add_requested_context(MRImageStorage)
-    ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
-    ae.add_requested_context(CTImageStorage)
-    ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
-    ae.connection_timeout=60
-    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
-    if assoc.is_established:
-        for f in os.listdir(s_path):
-            ds = pydicom.dcmread(os.path.join(s_path, f))
-            status = assoc.send_c_store(ds)
-        assoc.release()
-        logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} send to CARBON OK')
-
-
-def send_to_uih(s_path):
-    ae = AE(ae_title=b'SDM')
-    ae.add_requested_context(MRImageStorage)
-    ae.add_requested_context(MRImageStorage,[pydicom.uid.JPEGLosslessSV1])
-    ae.add_requested_context(CTImageStorage)
-    ae.add_requested_context(CTImageStorage,[pydicom.uid.JPEGLosslessSV1])
-    ae.connection_timeout=60
-    assoc = ae.associate('172.21.253.62', 30966, ae_title=b'UIHHXZS66')
-    if assoc.is_established:
-        for f in os.listdir(s_path):
-            ds = pydicom.dcmread(os.path.join(s_path, f))
-            status = assoc.send_c_store(ds)
-        assoc.release()
-        logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} send to UIH OK')
-
-
-def move_series_to_plaza(PID,SDUID,SUID):
-    ae = AE(ae_title=b'C3D')
-    ae.add_requested_context(PatientRootQueryRetrieveInformationModelMove)
-    ae.connection_timeout=60
-    assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
-    if assoc.is_established:
-        ds = pydicom.Dataset()
-        ds.PatientID = PID
-        ds.StudyInstanceUID = SDUID
-        ds.SeriesInstanceUID = SUID
-        ds.QueryRetrieveLevel = "SERIES"
-        responses = assoc.send_c_move(ds, 'PLAZAAPP1', PatientRootQueryRetrieveInformationModelMove)
-        for (status, identifier) in responses:
-            if status:
-                logging.warning(f'plaza: 0x{status.Status:04x}')
-        assoc.release()
-    else:
-        logging.warning('Association rejected, aborted or never connected')
 
 
 def move_series_to_color(PID,SDUID,SUID):
