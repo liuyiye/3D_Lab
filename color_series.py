@@ -77,22 +77,54 @@ def color(series_dir):
             
             if (0x0088, 0x0200) in ds:
                 del ds[0x0088, 0x0200] #del icon
+                
+            #构建一个精简的dataset，适配uih
+            data = pydicom.Dataset()
+            data.file_meta = pydicom.Dataset()
+            data.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
             
-            ds.PhotometricInterpretation = 'RGB'
-            ds.PlanarConfiguration = 0
-            ds.SamplesPerPixel = 3
-            ds.BitsAllocated = 8
-            ds.BitsStored = 8
-            ds.HighBit = 7
-            ds.PixelRepresentation = 0
-            ds.PixelData = rgb_data.tobytes()
-            ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+            data.SOPClassUID = ds.SOPClassUID
+            data.PatientID = ds.PatientID
+            data.StudyInstanceUID = ds.StudyInstanceUID
+            data.PatientName = ds.PatientName
+            data.StudyDate = ds.StudyDate
+            data.StudyTime = ds.StudyTime
+            data.ContentDate = ds.ContentDate
+            data.ContentTime = ds.ContentTime
+            data.AccessionNumber = ds.AccessionNumber
+            data.Modality = ds.Modality
+            data.SeriesNumber = ds.SeriesNumber
+            data.PatientBirthDate = ds.PatientBirthDate
+            data.ReferringPhysicianName = ds.ReferringPhysicianName
+            data.PatientSex = ds.PatientSex
             
-            ds.SOPInstanceUID = pydicom.uid.generate_uid()
-            ds.SeriesDescription = '3D_Lab_'+ds.SeriesDescription
-            ds.SeriesInstanceUID = siuid
+            data.SeriesDescription='3D_Lab_'+ds.SeriesDescription
+            data.SeriesInstanceUID = siuid
+            data.SOPInstanceUID = pydicom.uid.generate_uid()
+            data.InstanceNumber = ds.InstanceNumber
+            data.Rows=ds.Rows
+            data.Columns=ds.Columns
+            data.PhotometricInterpretation = 'RGB'
+            data.PlanarConfiguration = 0
+            data.RescaleIntercept=0
+            data.SamplesPerPixel=3
+            data.BitsAllocated = 8
+            data.BitsStored = 8
+            data.HighBit = 7
+            data.PixelRepresentation = 0
+            data.PixelData = rgb_data.tobytes()
             
-            ds.save_as(f, write_like_original=False)
+            data.SliceLocation=''
+            data.ImagePositionPatient = ''
+            data.ImageOrientationPatient = ''
+            data.NumberOfFrames = ''
+            data.PixelSpacing = ''
+            data.WindowCenter = ''
+            data.WindowWidth = ''
+            data.RescaleSlope = ''
+            data.RescaleType = ''
+
+            data.save_as(f, write_like_original=False)
 
 
 def pwi(text):
