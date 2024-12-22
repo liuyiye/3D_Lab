@@ -77,7 +77,7 @@ def color(series_dir):
             
             if (0x0088, 0x0200) in ds:
                 del ds[0x0088, 0x0200] #del icon
-                
+            
             #构建一个精简的dataset，适配uih
             data = pydicom.Dataset()
             data.file_meta = pydicom.Dataset()
@@ -123,7 +123,7 @@ def color(series_dir):
             data.WindowWidth = ''
             data.RescaleSlope = ''
             data.RescaleType = ''
-
+            
             data.save_as(f, write_like_original=False)
 
 
@@ -166,7 +166,7 @@ def image_count_in_series(ID,STUID,SUID):
     ae.add_requested_context(PatientRootQueryRetrieveInformationModelFind)
     ae.connection_timeout=60
     assoc = ae.associate('192.168.21.102', 11101, ae_title=b'IDMAPP1')
-
+    
     if assoc.is_established:
         responses = assoc.send_c_find(ds, PatientRootQueryRetrieveInformationModelFind)
         for (status, identifier) in responses:
