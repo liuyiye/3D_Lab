@@ -215,6 +215,10 @@ def check_series():
                     complete_path = os.path.join(COMPLETE_DIR, series_dir)
                     shutil.move(series_path, complete_path)
                     logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} all done\n')
+            else:
+                complete_path = os.path.join(COMPLETE_DIR, series_dir)
+                shutil.move(series_path, complete_path)
+                logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} deleted\n')
 
 
 def send(s_path,ip,port,aet):
