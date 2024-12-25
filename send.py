@@ -16,6 +16,7 @@ def send(IP,PORT,AET,PATH):
   assoc = ae.associate(IP,PORT,ae_title=AET)
   if assoc.is_established:
     for root, dirs, files in os.walk(PATH):
+      n=0
       for f in files:
         try:
           ds = pydicom.dcmread(os.path.join(root, f))
@@ -24,7 +25,8 @@ def send(IP,PORT,AET,PATH):
           is_dicom = False
         if is_dicom:
           status = assoc.send_c_store(ds)
-      print(f'{root} OK')
+          n = n+1
+      print(f'{n} dicom files sent. {root}')
     assoc.release()
 
 
