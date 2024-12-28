@@ -34,10 +34,10 @@
     RawDataStorage,
     CTImageStorage,
     MRImageStorage,
+    SecondaryCaptureImageStorage,
     XRayAngiographicImageStorage,
     DigitalMammographyXRayImageStorageForPresentation,
     DigitalXRayImageStorageForPresentation,
-    SecondaryCaptureImageStorage,
     NuclearMedicineImageStorage,
     PositronEmissionTomographyImageStorage,
   ]
@@ -61,7 +61,7 @@
           try:
             status = assoc.send_c_store(ds)
             n = n+1
-          except:pass
+          except Exception as e:print(e)
       print(f'{n} dicom files sent. {root}')
     assoc.release()
 
@@ -125,7 +125,7 @@ while True:
     except Exception as e:print(e)
   
   elif choice == 'i':
-    print("1p.2c.3u,82,3d") 
+    print("1p,2c,3u,82,3d") 
     IP = input("please input IP: ")
     try:PORT = int(input("please input PORT: "))
     except:pass
