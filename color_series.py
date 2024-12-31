@@ -217,7 +217,8 @@ def check_series():
                     logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} all done\n')
             else:
                 complete_path = os.path.join(COMPLETE_DIR, series_dir)
-                shutil.move(series_path, complete_path)
+                try:shutil.move(series_path, complete_path)
+                except Exception as e:logging.warning(e)
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} deleted\n')
 
 
