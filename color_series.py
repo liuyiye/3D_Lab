@@ -217,11 +217,13 @@ def check_series():
                     logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} all done\n')
             else:
                 complete_path = os.path.join(COMPLETE_DIR, series_dir)
-                try:shutil.move(series_path, complete_path)
+                try:
+                    shutil.move(series_path, complete_path)
+                    logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} moved\n')
                 except Exception as e:
                     logging.warning(e)
                     shutil.rmtree(series_path,ignore_errors=True)
-                logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} deleted\n')
+                    logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} deleted\n')
 
 
 def send(s_path,ip,port,aet):
