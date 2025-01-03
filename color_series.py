@@ -218,7 +218,9 @@ def check_series():
             else:
                 complete_path = os.path.join(COMPLETE_DIR, series_dir)
                 try:shutil.move(series_path, complete_path)
-                except Exception as e:logging.warning(e)
+                except Exception as e:
+                    logging.warning(e)
+                    shutil.rmtree(series_path,ignore_errors=True)
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} deleted\n')
 
 
