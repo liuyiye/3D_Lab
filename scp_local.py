@@ -12,8 +12,8 @@ while True:
       break
 
 store_folder = 'scp'
-AllContexts = False
-not_save = False
+all_sop = False
+discard = False
 ip = ''
 port = 11111
 ae_title = 'local'
@@ -21,15 +21,15 @@ ae_title = 'local'
 if menu:
     print('\nreturn for default:\n')
     print('store_folder = scp')
-    print('AllContexts = False')
-    print('not_save = False')
+    print('all_sop = False')
+    print('discard = False')
     print('ip = local')
     print('port = 11111')
     print('ae_title = local\n')
     
     store_folder = input("store_folder:") or 'scp'
-    AllContexts = input("AllContexts:") or False
-    not_save = input("not_save:") or False
+    all_sop = input("all_sop:") or False
+    discard = input("discard:") or False
     ip = input("ip:")
     try:port = int(input("port:")) or 11111
     except:pass
@@ -57,13 +57,16 @@ def handle_store(event):
     ds = event.dataset
     ds.file_meta = event.file_meta
     try:
-        sn=f'{ds.SeriesNumber}_{ds.SeriesDescription}'
+        sn = f'{ds.SeriesNumber}_{ds.SeriesDescription}'
         sn = re.sub(r'[<>:"/\\|?*]', '_', sn)
+        id_name = f'{ds.PatientID}_{ds.PatientName}_{ds.ContentDate}'
+        id_name = re.sub(r'[<>:"/\\|?*]', '_', id_name)
     except:
         sn=None
-    pdir = os.path.join(store_folder,ds.PatientID,sn)
+        id_name=ds.PatientID
+    pdir = os.path.join(store_folder,id_name,sn)
     f = os.path.join(pdir, f'{ds.SOPInstanceUID}.dcm')
-    if not not_save:
+    if not discard:
         os.makedirs(pdir, exist_ok=True)
         ds.save_as(f, write_like_original=False)
     return 0x0000
@@ -71,7 +74,7 @@ def handle_store(event):
 handlers = [(evt.EVT_C_STORE, handle_store)]
 ae = AE(ae_title=ae_title)
 
-if AllContexts:
+if all_sop:
     ae.supported_contexts = AllStoragePresentationContexts
 else:
     for sop in storage_classes:
