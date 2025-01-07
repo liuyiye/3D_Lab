@@ -1,39 +1,41 @@
 ﻿import msvcrt
 while True:
   password = ''
+  menu = False
   while True:
     ch = msvcrt.getwch()
     if ch == '\r':break
     password += ch
   if password == '678':break
-
+  if password == '678i':
+    menu = True
+    break
 
 while True:
   print("\n请输入需要传输的完整文件夹路径")
-  src_dir = input("please input path: ")
+  src_dir = input("please input the dicom folder: ")
   if src_dir:break
 
+jpg = False
+debug = False
+all_sop = False
+scu_ae_title = 'SDM'
+
+if menu:
+  print('\nreturn for default:\n')
+  print('jpg = False')
+  print('debug = False')
+  print('all_sop = False')
+  print('scu_ae_title = SDM')
+  
+  jpg = input("jpg:") or False
+  debug = input("debug:") or False
+  all_sop = input("all_sop:") or False
+  scu_ae_title = input("scu_ae_title:") or 'SDM'
 
 import os,sys,pydicom,tempfile
-from pynetdicom import AE,debug_logger
+from pynetdicom import AE,debug_logger,StoragePresentationContexts
 from pynetdicom.sop_class import *
-
-if len(sys.argv)==1:
-  debug = False
-  scu_ae_title = b'SDM'
-  jpg = False
-elif len(sys.argv)==2 and sys.argv[1]!='jpg':
-  debug = True
-  scu_ae_title = sys.argv[1].encode() #使用字节字符串，似乎也可以使用普通字符串
-  jpg = False
-elif len(sys.argv)==2 and sys.argv[1]=='jpg':
-  debug = False
-  scu_ae_title = b'SDM'
-  jpg = True
-else:
-  debug = True
-  scu_ae_title = sys.argv[1].encode()
-  jpg = True
 
 def send(IP,PORT,AET,src_dir):
   if debug is True:
@@ -53,9 +55,12 @@ def send(IP,PORT,AET,src_dir):
     PositronEmissionTomographyImageStorage  # 1.2.840.10008.5.1.4.1.1.128
   ]
   
-  for sop in storage_classes:
-    ae.add_requested_context(sop)
-    ae.add_requested_context(sop, [pydicom.uid.JPEGLosslessSV1])
+  if all_sop:
+    ae.requested_contexts = StoragePresentationContexts
+  else:
+    for sop in storage_classes:
+      ae.add_requested_context(sop)
+      ae.add_requested_context(sop, [pydicom.uid.JPEGLosslessSV1])
   
   assoc = ae.associate(IP,PORT,ae_title=AET)
   if assoc.is_established:
@@ -91,9 +96,9 @@ def send(IP,PORT,AET,src_dir):
       print(f'{n} dicom files sent. {root}')
     assoc.release()
 
-
 while True:
-  print("\n6 - PH_ISP01_ADV_AE") 
+  print("\nselect destination:")
+  print("6 - PH_ISP01_ADV_AE")
   print("7 - PH_ISP02_ADV_AE")
   print("8 - PH_ISP03_ADV_AE")
   print("9 - exit\n")
@@ -134,9 +139,12 @@ while True:
     try:send('172.20.99.33', 11112, '3D',src_dir)
     except Exception as e:print(e)
   
+  elif choice == 'local':
+    try:send('127.0.0.1', 11111, 'local',src_dir)
+    except Exception as e:print(e)
+  
   elif choice == 'i':
-    print("1p,2c,3u,82,3d")
-    print("send,send aet,send jpg,send aet any") 
+    print("1p,2c,3u,82,3d,local")
     IP = input("please input IP: ")
     try:PORT = int(input("please input PORT: "))
     except:pass
@@ -146,6 +154,5 @@ while True:
   
   else:
     print("wrong input")
-
 
 print("exit!")
