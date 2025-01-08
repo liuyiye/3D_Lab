@@ -22,7 +22,7 @@ all_sop = False
 scu_ae_title = 'SDM'
 
 if menu:
-  print('\nreturn for default:\n')
+  print('\nreturn for default:')
   print('jpg = False')
   print('debug = False')
   print('all_sop = False')
@@ -38,7 +38,7 @@ from pynetdicom import AE,debug_logger,StoragePresentationContexts
 from pynetdicom.sop_class import *
 
 def send(IP,PORT,AET,src_dir):
-  if debug is True:
+  if debug:
     debug_logger()
   
   ae = AE(ae_title=scu_ae_title)
