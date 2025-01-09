@@ -14,31 +14,34 @@ while True:
 store_folder = 'scp'
 all_sop = False
 discard = False
+debug = False
 ip = ''
-port = 11111
+port = 12345
 ae_title = 'local'
 
 if menu:
-    print('\nreturn for default:\n')
+    print('\nreturn for default:')
     print('store_folder = scp')
     print('all_sop = False')
     print('discard = False')
+    print('debug = False')
     print('ip = local')
-    print('port = 11111')
+    print('port = 12345')
     print('ae_title = local\n')
     
     store_folder = input("store_folder:") or 'scp'
     all_sop = input("all_sop:") or False
     discard = input("discard:") or False
+    debug = input("debug:") or False
     ip = input("ip:")
-    try:port = int(input("port:")) or 11111
+    try:port = int(input("port:")) or 12345
     except:pass
     ae_title = input("ae_title:") or 'local'
 
 print(f"scp started. port:{port}, ae_title:{ae_title}, directory:{store_folder}")
 
 import os,re,pydicom
-from pynetdicom import AE, evt, AllStoragePresentationContexts
+from pynetdicom import AE, evt, debug_logger, AllStoragePresentationContexts
 from pynetdicom.sop_class import *
 
 storage_classes = [
@@ -54,6 +57,8 @@ storage_classes = [
 ]
 
 def handle_store(event):
+    if debug:
+        debug_logger()
     ds = event.dataset
     ds.file_meta = event.file_meta
     try:
@@ -62,7 +67,7 @@ def handle_store(event):
         id_name = f'{ds.PatientID}_{ds.PatientName}_{ds.ContentDate}'
         id_name = re.sub(r'[<>:"/\\|?*]', '_', id_name)
     except:
-        sn=None
+        sn='unknown_series'
         id_name=ds.PatientID
     pdir = os.path.join(store_folder,id_name,sn)
     f = os.path.join(pdir, f'{ds.SOPInstanceUID}.dcm')
