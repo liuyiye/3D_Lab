@@ -20,11 +20,14 @@ def handle_store(event):
     ds = event.dataset
     ds.file_meta = event.file_meta
     try:
-        sn=f'{ds.SeriesNumber}_{ds.SeriesDescription}'
+        sn = f'{ds.SeriesNumber}_{ds.SeriesDescription}'
         sn = re.sub(r'[<>:"/\\|?*]', '_', sn)
+        id_name = f'{ds.PatientID}_{ds.PatientName}_{ds.ContentDate}'
+        id_name = re.sub(r'[<>:"/\\|?*]', '_', id_name)
     except:
-        sn=None
-    pdir = os.path.join(store_folder,ds.PatientID,sn)
+        sn='unknown_series'
+        id_name=ds.PatientID
+    pdir = os.path.join(store_folder,id_name,sn)
     f = os.path.join(pdir, f'{ds.SOPInstanceUID}.dcm')
     os.makedirs(pdir, exist_ok=True)
     ds.save_as(f, write_like_original=False)
