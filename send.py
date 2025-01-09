@@ -77,7 +77,8 @@ def send(IP,PORT,AET,src_dir):
         if is_dicom and not jpg:
           try:
             status = assoc.send_c_store(ds)
-            n = n+1
+            if status.Status == 0x0000:
+              n = n+1
           except Exception as e:print(e)
         if is_dicom and jpg:
           temp_dir = tempfile.gettempdir()
@@ -91,7 +92,8 @@ def send(IP,PORT,AET,src_dir):
             os.makedirs(dst_dir, exist_ok=True)
             ds.save_as(dst_path,write_like_original=False)
             status = assoc.send_c_store(ds)
-            n = n+1
+            if status.Status == 0x0000:
+              n = n+1
           except Exception as e:print(e)
       print(f'{n} dicom files sent. {root}')
     assoc.release()
@@ -140,7 +142,7 @@ while True:
     except Exception as e:print(e)
   
   elif choice == 'local':
-    try:send('127.0.0.1', 11111, 'local',src_dir)
+    try:send('127.0.0.1', 12345, 'local',src_dir)
     except Exception as e:print(e)
   
   elif choice == 'i':
