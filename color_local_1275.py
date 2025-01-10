@@ -74,6 +74,7 @@ def color():
               data.PatientID = ds.PatientID
               data.StudyInstanceUID = ds.StudyInstanceUID
               data.PatientName = ds.PatientName
+              data.StudyID = ds.StudyID
               data.StudyDate = ds.StudyDate
               data.StudyTime = ds.StudyTime
               data.ContentDate = ds.ContentDate
@@ -84,9 +85,10 @@ def color():
               data.PatientBirthDate = ds.PatientBirthDate
               data.ReferringPhysicianName = ds.ReferringPhysicianName
               data.PatientSex = ds.PatientSex
-              
               data.SeriesDescription='3D_Lab_'+ds.SeriesDescription
               data.SeriesInstanceUID = siuid
+              data.SeriesDate = ds.SeriesDate
+              data.SeriesTime = ds.SeriesTime
               data.SOPInstanceUID = pydicom.uid.generate_uid()
               data.InstanceNumber = ds.InstanceNumber
               data.Rows=ds.Rows
@@ -100,7 +102,6 @@ def color():
               data.HighBit = 7
               data.PixelRepresentation = 0
               data.PixelData = rgb_data.tobytes()
-              
               data.SliceLocation=''
               data.ImagePositionPatient = ''
               data.ImageOrientationPatient = ''
@@ -111,7 +112,7 @@ def color():
               data.RescaleSlope = ''
               data.RescaleType = ''
               data.SpecificCharacterSet = 'GB18030'
-              
+
               relative_path = os.path.relpath(src_file, dicom_folder)
               dst_path = os.path.join(dst_folder, relative_path)
               dst_dir = os.path.dirname(dst_path)
@@ -1396,5 +1397,6 @@ palette=np.array([
 [255,1,0]])
 
 if __name__ == '__main__':
-  color()
+  try:color()
+  except Exception as e:print(e)
   input('\nDone!')

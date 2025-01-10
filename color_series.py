@@ -80,6 +80,7 @@ def color(series_dir):
             data.PatientID = ds.PatientID
             data.StudyInstanceUID = ds.StudyInstanceUID
             data.PatientName = ds.PatientName
+            data.StudyID = ds.StudyID
             data.StudyDate = ds.StudyDate
             data.StudyTime = ds.StudyTime
             data.ContentDate = ds.ContentDate
@@ -93,6 +94,8 @@ def color(series_dir):
             
             data.SeriesDescription='3D_Lab_'+ds.SeriesDescription
             data.SeriesInstanceUID = siuid
+            data.SeriesDate = ds.SeriesDate
+            data.SeriesTime = ds.SeriesTime
             data.SOPInstanceUID = pydicom.uid.generate_uid()
             data.InstanceNumber = ds.InstanceNumber
             data.Rows=ds.Rows
