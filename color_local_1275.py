@@ -112,7 +112,7 @@ def color():
               data.RescaleSlope = ''
               data.RescaleType = ''
               data.SpecificCharacterSet = 'GB18030'
-
+              
               relative_path = os.path.relpath(src_file, dicom_folder)
               dst_path = os.path.join(dst_folder, relative_path)
               dst_dir = os.path.dirname(dst_path)
