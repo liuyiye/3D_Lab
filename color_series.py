@@ -192,6 +192,9 @@ def check_series():
             if m==0: #图像未发送到pacs
                 logging.warning(f'count=0')
                 time.sleep(60)
+                n_files = os.listdir(series_path)
+                n=len(n_files)
+                logging.warning(f'n_from_Modality={n}')
             if n>0 and n<m: #接收到的图像不全
                 time.sleep(60)
                 n_files = os.listdir(series_path)
