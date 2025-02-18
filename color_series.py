@@ -45,6 +45,7 @@ def color(series_dir):
                 resized_data = resize(normalized_data, (2*ds.Rows, 2*ds.Columns), mode='reflect', anti_aliasing=True)
                 pixel_data = (resized_data * np.max(pixel_data)).astype(np.uint16)
                 ds.Rows, ds.Columns = pixel_data.shape
+                ds.PixelSpacing = [i/2 for i in ds.PixelSpacing]
             
             if ds.Modality == 'CT':
                 try:
@@ -110,15 +111,17 @@ def color(series_dir):
             data.PixelRepresentation = 0
             data.PixelData = rgb_data.tobytes()
             
-            data.SliceLocation=''
-            data.ImagePositionPatient = ''
-            data.ImageOrientationPatient = ''
+            data.SliceLocation = ds.SliceLocation
+            data.ImagePositionPatient = ds.ImagePositionPatient
+            data.ImageOrientationPatient = ds.ImageOrientationPatient
             data.NumberOfFrames = ''
-            data.PixelSpacing = ''
+            data.PixelSpacing = ds.PixelSpacing
             data.WindowCenter = ''
             data.WindowWidth = ''
             data.RescaleSlope = ''
             data.RescaleType = ''
+
+            data.FrameOfReferenceUID = ds.FrameOfReferenceUID
             
             data.save_as(f, write_like_original=False)
 
@@ -205,7 +208,7 @@ def check_series():
                     n_files = os.listdir(series_path)
                     n=len(n_files)
                     logging.warning(f'n3={n}')
-            if (n==m or m==0) and n < 36 and n > 16:
+            if (n==m or m==0) and n < 36 and n > 10:
                 logging.warning(f'{ds.PatientID,ds.StudyDate,ds.SeriesNumber,ds.SeriesDescription} transfer complete, forwarding...')
                 color(series_path)
                 now = datetime.now()
