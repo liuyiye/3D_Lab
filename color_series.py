@@ -111,7 +111,7 @@ def color(series_dir):
             data.PixelRepresentation = 0
             data.PixelData = rgb_data.tobytes()
             
-            data.SliceLocation = ds.SliceLocation
+            data.SliceLocation = ''
             data.ImagePositionPatient = ds.ImagePositionPatient
             data.ImageOrientationPatient = ds.ImageOrientationPatient
             data.NumberOfFrames = ''
@@ -215,9 +215,9 @@ def check_series():
                 date_time = now.strftime("%Y-%m-%d %H:%M:%S")
                 series_info = [date_time, ds.PatientID, ds.StudyDate, ds.SeriesInstanceUID]
                 received_series.append(ds.SeriesInstanceUID)
-                if send(series_path,'192.168.21.114', 104, 'PLAZAAPP1'):
-                    send(series_path,'192.168.21.102', 11101, 'IDMAPP1')
+                if send(series_path,'192.168.21.102', 11101, 'IDMAPP1'):
                     send(series_path,'172.21.253.62', 30966, 'UIHHXZS66')
+                    send(series_path,'192.168.21.114', 104, 'PLAZAAPP1')
                     with open(RECEIVED_SERIES_FILE, 'a', newline='') as f:
                         writer = csv.writer(f)
                         writer.writerow(series_info)
