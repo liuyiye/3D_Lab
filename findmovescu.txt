@@ -18,6 +18,10 @@ findscu -S -aet SDM -aec PLAZAAPP1 192.168.21.114 104 -k QueryRetrieveLevel=IMAG
 
 ================
 
+storescp -od d:\scp -aet C3D 11112
+
+================
+
 movescu -S -aet SDM -aec IDMAPP1 192.168.21.102 11101 -aem C3D -k QueryRetrieveLevel=STUDY -k StudyInstanceUID=1.2.826.0.1.3680043.8.498.97324908382795990691795076900818697066
 
 movescu -S -aet SDM -aec IDMAPP1 192.168.21.102 11101 -aem C3D -k QueryRetrieveLevel=SERIES -k StudyInstanceUID=1.2.826.0.1.3680043.8.498.97324908382795990691795076900818697066 -k SeriesInstanceUID=1.2.826.0.1.3680043.8.498.55805989990382393289249818162052765706
